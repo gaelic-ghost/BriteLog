@@ -20,6 +20,7 @@ struct BriteLog: AsyncParsableCommand {
 extension BriteLog {
     struct WatchPlan: Equatable, Sendable {
         var source: Source
+        var allLogs: Bool
         var selfWatch: Bool
         var thisApp: Bool
         var bundleIdentifier: String?
@@ -121,6 +122,9 @@ extension BriteLog {
         @Option(help: "Choose where log entries come from.")
         var source: Source = .oslogStore
 
+        @Flag(name: [.customLong("all"), .customLong("console")], help: "Watch the broader macOS log stream without requiring a target filter.")
+        var allLogs = false
+
         @Flag(name: [.customLong("self")], help: "Watch log entries emitted by the running BriteLog process itself.")
         var selfWatch = false
 
@@ -181,6 +185,7 @@ extension BriteLog {
             let resolvedScope = Self.resolvedScope(selfWatch: selfWatch)
             let plan = WatchPlan(
                 source: source,
+                allLogs: allLogs,
                 selfWatch: selfWatch,
                 thisApp: thisApp,
                 bundleIdentifier: resolvedBundleIdentifier,
@@ -217,6 +222,15 @@ extension BriteLog {
                 metadataMode: metadata.coreMode
             )
             let source = makeLiveSource(for: source, scope: resolvedScope)
+
+            guard Self.shouldStartWatching(
+                allLogs: allLogs,
+                selfWatch: selfWatch,
+                filter: liveRequest.filter
+            ) else {
+                printIntro()
+                return
+            }
 
             printStartupBanner(for: plan, scope: resolvedScope)
             printScopeNoteIfNeeded(for: liveRequest.filter, scope: resolvedScope)
@@ -264,6 +278,7 @@ extension BriteLog {
                 """
                 BriteLog live watch started.
                   source: \(plan.source.rawValue)
+                  all logs: \(plan.allLogs ? "yes" : "no")
                   self: \(plan.selfWatch ? "yes" : "no")
                   scope: \(scope.rawValue)
                   this app: \(plan.thisApp ? "yes" : "no")
@@ -334,6 +349,34 @@ extension BriteLog {
 
         static func resolvedScope(selfWatch: Bool) -> Scope {
             selfWatch ? .currentProcess : .localStore
+        }
+
+        static func shouldStartWatching(
+            allLogs: Bool,
+            selfWatch: Bool,
+            filter: BriteLogFilter
+        ) -> Bool {
+            allLogs || selfWatch || filter.hasFocusConstraint
+        }
+
+        private func printIntro() {
+            print(
+                """
+                BriteLog watches another app's unified logs and reprints them with developer-friendly formatting.
+
+                Try one of these:
+                  swift run BriteLog watch --this-app
+                  swift run BriteLog watch --bundle-id com.example.MyApp
+                  swift run BriteLog watch --subsystem com.example.MyApp
+                  swift run BriteLog watch --process MyApp
+                  swift run BriteLog watch --all
+
+                Notes:
+                  - Plain `watch` does not start the full machine-wide stream by default.
+                  - Use `--all` or `--console` if you really want the broader macOS log firehose.
+                  - Use `--self` only when you want to debug BriteLog itself.
+                """
+            )
         }
 
         private func printScopeNoteIfNeeded(

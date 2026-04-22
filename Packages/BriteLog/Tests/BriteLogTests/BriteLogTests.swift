@@ -6,6 +6,7 @@ import BriteLogCore
 @Test func watchPlanCarriesChosenPresentationDefaults() async throws {
     let plan = BriteLog.WatchPlan(
         source: .oslogStore,
+        allLogs: false,
         selfWatch: false,
         thisApp: false,
         bundleIdentifier: "com.gaelic-ghost.demo",
@@ -25,6 +26,7 @@ import BriteLogCore
     )
 
     #expect(plan.source == .oslogStore)
+    #expect(!plan.allLogs)
     #expect(!plan.selfWatch)
     #expect(!plan.thisApp)
     #expect(plan.bundleIdentifier == "com.gaelic-ghost.demo")
@@ -54,6 +56,29 @@ import BriteLogCore
 @Test func selfWatchResolvesCurrentProcessScope() async throws {
     #expect(BriteLog.Watch.resolvedScope(selfWatch: false) == .localStore)
     #expect(BriteLog.Watch.resolvedScope(selfWatch: true) == .currentProcess)
+}
+
+@Test func watchStartRequiresExplicitFocusOrAllLogs() async throws {
+    #expect(!BriteLog.Watch.shouldStartWatching(
+        allLogs: false,
+        selfWatch: false,
+        filter: .init()
+    ))
+    #expect(BriteLog.Watch.shouldStartWatching(
+        allLogs: true,
+        selfWatch: false,
+        filter: .init()
+    ))
+    #expect(BriteLog.Watch.shouldStartWatching(
+        allLogs: false,
+        selfWatch: true,
+        filter: .init()
+    ))
+    #expect(BriteLog.Watch.shouldStartWatching(
+        allLogs: false,
+        selfWatch: false,
+        filter: .init(subsystem: "com.gaelic-ghost.demo")
+    ))
 }
 
 @Test func bundleIdentifierResolvesToSubsystemFilter() async throws {
