@@ -6,6 +6,7 @@ import BriteLogCore
 @Test func watchPlanCarriesChosenPresentationDefaults() async throws {
     let plan = BriteLog.WatchPlan(
         source: .oslogStore,
+        thisApp: false,
         bundleIdentifier: "com.gaelic-ghost.demo",
         subsystem: "com.gaelic-ghost.demo",
         category: "rendering",
@@ -23,6 +24,7 @@ import BriteLogCore
     )
 
     #expect(plan.source == .oslogStore)
+    #expect(!plan.thisApp)
     #expect(plan.bundleIdentifier == "com.gaelic-ghost.demo")
     #expect(plan.subsystem == "com.gaelic-ghost.demo")
     #expect(plan.category == "rendering")
@@ -51,6 +53,51 @@ import BriteLogCore
     #expect(try BriteLog.Watch.resolvedSubsystem(subsystem: nil, bundleIdentifier: "com.gaelic-ghost.demo") == "com.gaelic-ghost.demo")
     #expect(try BriteLog.Watch.resolvedSubsystem(subsystem: "com.gaelic-ghost.demo", bundleIdentifier: nil) == "com.gaelic-ghost.demo")
     #expect(try BriteLog.Watch.resolvedSubsystem(subsystem: "com.gaelic-ghost.demo", bundleIdentifier: "com.gaelic-ghost.demo") == "com.gaelic-ghost.demo")
+}
+
+@Test func thisAppSchemeSelectionPrefersProjectName() async throws {
+    #expect(try ThisAppBundleIdentifierResolver.chooseScheme(
+        schemes: ["DemoApp", "DemoLibrary"],
+        projectName: "DemoApp"
+    ) == "DemoApp")
+}
+
+@Test func thisAppBuildSettingsPreferMatchingAppTarget() async throws {
+    let entries = [
+        ThisAppBundleIdentifierResolver.BuildSettingsEntry(
+            target: "DemoApp",
+            buildSettings: [
+                "PRODUCT_BUNDLE_IDENTIFIER": "com.gaelic-ghost.demo",
+                "WRAPPER_EXTENSION": "app",
+            ]
+        ),
+        ThisAppBundleIdentifierResolver.BuildSettingsEntry(
+            target: "DemoFramework",
+            buildSettings: [
+                "PRODUCT_BUNDLE_IDENTIFIER": "com.gaelic-ghost.framework",
+                "WRAPPER_EXTENSION": "framework",
+            ]
+        ),
+    ]
+
+    #expect(try ThisAppBundleIdentifierResolver.chooseBundleIdentifier(
+        entries: entries,
+        preferredName: "DemoApp",
+        projectName: "DemoApp"
+    ) == "com.gaelic-ghost.demo")
+}
+
+@Test func explicitBundleIdentifierMustMatchThisAppInference() async throws {
+    do {
+        _ = try BriteLog.Watch.resolvedBundleIdentifier(
+            bundleIdentifier: "com.gaelic-ghost.one",
+            thisApp: true,
+            inferThisAppBundleIdentifier: { "com.gaelic-ghost.two" }
+        )
+        Issue.record("Expected `--this-app` inference mismatch to throw a validation error.")
+    } catch {
+        #expect("\(error)".contains("--this-app"))
+    }
 }
 
 @Test func conflictingBundleIdentifierAndSubsystemAreRejected() async throws {

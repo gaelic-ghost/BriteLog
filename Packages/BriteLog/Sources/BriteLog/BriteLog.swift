@@ -20,6 +20,7 @@ struct BriteLog: AsyncParsableCommand {
 extension BriteLog {
     struct WatchPlan: Equatable, Sendable {
         var source: Source
+        var thisApp: Bool
         var bundleIdentifier: String?
         var subsystem: String?
         var category: String?
@@ -122,6 +123,9 @@ extension BriteLog {
         @Option(help: "Choose which OSLogStore scope to open.")
         var scope: Scope = .currentProcess
 
+        @Flag(name: [.customLong("this-app")], help: "Resolve a bundle identifier from the current directory's single `.xcodeproj` and watch that app.")
+        var thisApp = false
+
         @Option(name: [.customLong("bundle-id")], help: "Prefer log entries from this bundle identifier. This maps to subsystem filtering.")
         var bundleIdentifier: String?
 
@@ -165,13 +169,18 @@ extension BriteLog {
         var simplifyOutput = false
 
         func run() async throws {
+            let resolvedBundleIdentifier = try Self.resolvedBundleIdentifier(
+                bundleIdentifier: bundleIdentifier,
+                thisApp: thisApp
+            )
             let resolvedSubsystem = try Self.resolvedSubsystem(
                 subsystem: subsystem,
-                bundleIdentifier: bundleIdentifier
+                bundleIdentifier: resolvedBundleIdentifier
             )
             let plan = WatchPlan(
                 source: source,
-                bundleIdentifier: bundleIdentifier,
+                thisApp: thisApp,
+                bundleIdentifier: resolvedBundleIdentifier,
                 subsystem: resolvedSubsystem,
                 category: category,
                 process: process,
@@ -253,6 +262,7 @@ extension BriteLog {
                 BriteLog live watch started.
                   source: \(plan.source.rawValue)
                   scope: \(scope.rawValue)
+                  this app: \(plan.thisApp ? "yes" : "no")
                   bundle id: \(plan.bundleIdentifier ?? "any")
                   subsystem: \(plan.subsystem ?? "any")
                   category: \(plan.category ?? "any")
@@ -293,6 +303,29 @@ extension BriteLog {
             case (nil, nil):
                 return nil
             }
+        }
+
+        static func resolvedBundleIdentifier(
+            bundleIdentifier: String?,
+            thisApp: Bool,
+            inferThisAppBundleIdentifier: () throws -> String = { try ThisAppBundleIdentifierResolver().resolve() }
+        ) throws -> String? {
+            guard thisApp else {
+                return bundleIdentifier
+            }
+            let inferred = try inferThisAppBundleIdentifier()
+            guard let bundleIdentifier else {
+                return inferred
+            }
+            guard bundleIdentifier == inferred else {
+                throw ValidationError(
+                    """
+                    `--this-app` resolved bundle id `\(inferred)`, which does not match the explicit `--bundle-id`
+                    value `\(bundleIdentifier)`.
+                    """
+                )
+            }
+            return bundleIdentifier
         }
 
         private func printScopeNoteIfNeeded(
