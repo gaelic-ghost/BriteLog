@@ -1,4 +1,5 @@
 import ArgumentParser
+import Foundation
 import Testing
 @testable import BriteLog
 import BriteLogCore
@@ -51,6 +52,36 @@ import BriteLogCore
     #expect(BriteLog.Level.allCases.map(\.rawValue) == ["trace", "debug", "info", "notice", "warning", "error", "fault", "critical"])
     #expect(BriteLog.Source.allCases.map(\.rawValue) == ["oslog-store"])
     #expect(BriteLog.Scope.allCases.map(\.rawValue) == ["current-process", "local-store"])
+}
+
+@Test func watchUsesSavedThemeWhenNoExplicitThemeIsProvided() async throws {
+    let resolved = try BriteLog.Watch.resolvedTheme(
+        theme: nil,
+        loadConfiguration: { .init(selectedTheme: .neon) }
+    )
+
+    #expect(resolved == .neon)
+}
+
+@Test func explicitThemeOverridesSavedTheme() async throws {
+    let resolved = try BriteLog.Watch.resolvedTheme(
+        theme: .plain,
+        loadConfiguration: { .init(selectedTheme: .neon) }
+    )
+
+    #expect(resolved == .plain)
+}
+
+@Test func configurationStoreRoundTripsSelectedTheme() async throws {
+    let temporaryDirectory = FileManager.default.temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let configURL = temporaryDirectory.appendingPathComponent("config.json")
+    let store = BriteLogConfigurationStore(configURL: configURL)
+
+    try store.save(BriteLogConfiguration(selectedTheme: .neon))
+    let loaded = try store.load()
+
+    #expect(loaded.selectedTheme == BriteLog.Theme.neon)
 }
 
 @Test func selfWatchResolvesCurrentProcessScope() async throws {

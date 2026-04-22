@@ -13,7 +13,7 @@ struct BriteLog: AsyncParsableCommand {
             The first live ingestion path reads Apple's unified logging system through OSLogStore and keeps the
             ingestion boundary separate from rendering so later sources can land in their own module.
             """,
-        subcommands: [Watch.self, Doctor.self]
+        subcommands: [Watch.self, Themes.self, Doctor.self]
     )
 }
 
@@ -80,7 +80,7 @@ extension BriteLog {
         }
     }
 
-    enum Theme: String, CaseIterable, ExpressibleByArgument, Sendable {
+    enum Theme: String, CaseIterable, ExpressibleByArgument, Codable, Sendable {
         case xcode
         case neon
         case plain
@@ -156,7 +156,7 @@ extension BriteLog {
         var minimumLevel: Level?
 
         @Option(help: "Choose how re-rendered output should look in Terminal or Console.")
-        var theme: Theme = .xcode
+        var theme: Theme?
 
         @Option(help: "Choose how much metadata to keep visible beside each message.")
         var metadata: MetadataMode = .compact
@@ -183,6 +183,7 @@ extension BriteLog {
                 bundleIdentifier: resolvedBundleIdentifier
             )
             let resolvedScope = Self.resolvedScope(selfWatch: selfWatch)
+            let resolvedTheme = try Self.resolvedTheme(theme: theme)
             let plan = WatchPlan(
                 source: source,
                 allLogs: allLogs,
@@ -196,7 +197,7 @@ extension BriteLog {
                 sender: sender,
                 messageContains: messageContains,
                 minimumLevel: minimumLevel,
-                theme: theme,
+                theme: resolvedTheme,
                 metadataMode: metadata,
                 persistHighlights: persistHighlights,
                 simplifyOutput: simplifyOutput,
@@ -218,7 +219,7 @@ extension BriteLog {
                 pollInterval: .milliseconds(Int64((max(pollInterval, 0.1) * 1000).rounded()))
             )
             let renderer = BriteLogRenderer(
-                theme: theme.coreTheme,
+                theme: resolvedTheme.coreTheme,
                 metadataMode: metadata.coreMode
             )
             let source = makeLiveSource(for: source, scope: resolvedScope)
@@ -351,6 +352,16 @@ extension BriteLog {
             selfWatch ? .currentProcess : .localStore
         }
 
+        static func resolvedTheme(
+            theme: Theme?,
+            loadConfiguration: () throws -> BriteLogConfiguration = { try BriteLogConfigurationStore().load() }
+        ) throws -> Theme {
+            if let theme {
+                return theme
+            }
+            return try loadConfiguration().selectedTheme ?? .xcode
+        }
+
         static func shouldStartWatching(
             allLogs: Bool,
             selfWatch: Bool,
@@ -393,6 +404,59 @@ extension BriteLog {
                 Add `--subsystem`, `--process`, `--process-id`, `--sender`, or `--message-contains` to narrow the watch to a target app.
                 """
             )
+        }
+    }
+
+    struct Themes: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            commandName: "themes",
+            abstract: "List available color themes and manage the saved default.",
+            subcommands: [Select.self]
+        )
+
+        mutating func run() throws {
+            let store = BriteLogConfigurationStore()
+            let configuration = try store.load()
+            let selected = configuration.selectedTheme ?? .xcode
+
+            print("BriteLog themes")
+            for theme in Theme.allCases {
+                let marker = theme == selected ? "*" : " "
+                let suffix = theme == selected ? " (current default)" : ""
+                print("\(marker) \(theme.rawValue) - \(theme.displayName)\(suffix)")
+                print("  \(theme.summary)")
+            }
+
+            print(
+                """
+
+                Use `swift run BriteLog themes select <theme>` to change the saved default.
+                """
+            )
+        }
+
+        struct Select: ParsableCommand {
+            static let configuration = CommandConfiguration(
+                commandName: "select",
+                abstract: "Save a default theme for later BriteLog runs."
+            )
+
+            @Argument(help: "The theme to save as the default.")
+            var theme: Theme
+
+            mutating func run() throws {
+                let store = BriteLogConfigurationStore()
+                var configuration = try store.load()
+                configuration.selectedTheme = theme
+                try store.save(configuration)
+
+                print(
+                    """
+                    Saved BriteLog default theme: \(theme.rawValue)
+                    \(theme.summary)
+                    """
+                )
+            }
         }
     }
 
