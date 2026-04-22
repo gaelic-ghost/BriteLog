@@ -8,6 +8,12 @@ let package = Package(
     platforms: [
         .macOS("15.0"),
     ],
+    products: [
+        .library(
+            name: "BriteLogCLI",
+            targets: ["BriteLogCLI"]
+        ),
+    ],
     dependencies: [
         .package(url: "https://github.com/apple/swift-argument-parser.git", from: "1.2.0"),
     ],
@@ -19,18 +25,25 @@ let package = Package(
             name: "BriteLogOSLogStore",
             dependencies: ["BriteLogCore"]
         ),
-        .executableTarget(
-            name: "BriteLog",
+        .target(
+            name: "BriteLogCLI",
             dependencies: [
                 "BriteLogCore",
                 "BriteLogOSLogStore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
             ]
         ),
+        .executableTarget(
+            name: "BriteLog",
+            dependencies: [
+                "BriteLogCLI",
+            ]
+        ),
         .testTarget(
             name: "BriteLogTests",
             dependencies: [
                 "BriteLog",
+                "BriteLogCLI",
                 "BriteLogCore",
                 "BriteLogOSLogStore",
             ]

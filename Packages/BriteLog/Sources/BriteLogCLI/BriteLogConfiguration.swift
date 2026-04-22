@@ -2,7 +2,7 @@ import Foundation
 import ArgumentParser
 
 struct BriteLogConfiguration: Codable, Equatable {
-    var selectedTheme: BriteLog.Theme?
+    var selectedTheme: BriteLogCommand.Theme?
 }
 
 struct BriteLogConfigurationStore {
@@ -49,7 +49,7 @@ extension JSONEncoder {
     }
 }
 
-extension BriteLog.Theme {
+extension BriteLogCommand.Theme {
     var displayName: String {
         switch self {
         case .xcode:

@@ -3,9 +3,8 @@ import ArgumentParser
 import BriteLogCore
 import BriteLogOSLogStore
 
-@main
-struct BriteLog: AsyncParsableCommand {
-    static let configuration = CommandConfiguration(
+public struct BriteLogCommand: AsyncParsableCommand {
+    public static let configuration = CommandConfiguration(
         commandName: "britelog",
         abstract: "Restyle and simplify unified log output while you debug macOS apps.",
         discussion: """
@@ -15,9 +14,11 @@ struct BriteLog: AsyncParsableCommand {
             """,
         subcommands: [Watch.self, Themes.self, Doctor.self]
     )
+
+    public init() {}
 }
 
-extension BriteLog {
+extension BriteLogCommand {
     struct WatchPlan: Equatable, Sendable {
         var source: Source
         var allLogs: Bool

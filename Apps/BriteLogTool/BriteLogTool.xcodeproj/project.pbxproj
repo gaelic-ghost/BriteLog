@@ -77,6 +77,7 @@
 			);
 			name = BriteLogTool;
 			packageProductDependencies = (
+				497662B72F99850000EC6060 /* BriteLogCLI */,
 			);
 			productName = BriteLogTool;
 			productReference = 497662AA2F996D6700EC6060 /* BriteLogTool */;
@@ -106,6 +107,9 @@
 			);
 			mainGroup = 497662A12F996D6700EC6060;
 			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				497662B62F99789800EC6060 /* XCLocalSwiftPackageReference "../../Packages/BriteLog" */,
+			);
 			preferredProjectObjectVersion = 77;
 			productRefGroup = 497662AB2F996D6700EC6060 /* Products */;
 			projectDirPath = "";
@@ -254,10 +258,13 @@
 		497662B22F996D6700EC6060 /* Debug */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BriteLogTool/BriteLogTool.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = BC73766F69;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLogTool;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -268,10 +275,13 @@
 		497662B32F996D6700EC6060 /* Release */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
+				CODE_SIGN_ENTITLEMENTS = BriteLogTool/BriteLogTool.entitlements;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
 				CODE_SIGN_STYLE = Automatic;
 				DEVELOPMENT_TEAM = BC73766F69;
 				ENABLE_HARDENED_RUNTIME = YES;
 				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLogTool;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SWIFT_APPROACHABLE_CONCURRENCY = YES;
 				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
@@ -301,6 +311,21 @@
 			defaultConfigurationName = Release;
 		};
 /* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		497662B62F99789800EC6060 /* XCLocalSwiftPackageReference "../../Packages/BriteLog" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/BriteLog;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		497662B72F99850000EC6060 /* BriteLogCLI */ = {
+			isa = XCSwiftPackageProductDependency;
+			package = 497662B62F99789800EC6060 /* XCLocalSwiftPackageReference "../../Packages/BriteLog" */;
+			productName = BriteLogCLI;
+		};
+/* End XCSwiftPackageProductDependency section */
 	};
 	rootObject = 497662A22F996D6700EC6060 /* Project object */;
 }
