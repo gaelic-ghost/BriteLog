@@ -1,3 +1,4 @@
+import ArgumentParser
 import Testing
 @testable import BriteLog
 import BriteLogCore
@@ -5,6 +6,7 @@ import BriteLogCore
 @Test func watchPlanCarriesChosenPresentationDefaults() async throws {
     let plan = BriteLog.WatchPlan(
         source: .oslogStore,
+        bundleIdentifier: "com.gaelic-ghost.demo",
         subsystem: "com.gaelic-ghost.demo",
         category: "rendering",
         process: "DemoApp",
@@ -21,6 +23,7 @@ import BriteLogCore
     )
 
     #expect(plan.source == .oslogStore)
+    #expect(plan.bundleIdentifier == "com.gaelic-ghost.demo")
     #expect(plan.subsystem == "com.gaelic-ghost.demo")
     #expect(plan.category == "rendering")
     #expect(plan.process == "DemoApp")
@@ -42,6 +45,21 @@ import BriteLogCore
     #expect(BriteLog.Level.allCases.map(\.rawValue) == ["trace", "debug", "info", "notice", "warning", "error", "fault", "critical"])
     #expect(BriteLog.Source.allCases.map(\.rawValue) == ["oslog-store"])
     #expect(BriteLog.Scope.allCases.map(\.rawValue) == ["current-process", "local-store"])
+}
+
+@Test func bundleIdentifierResolvesToSubsystemFilter() async throws {
+    #expect(try BriteLog.Watch.resolvedSubsystem(subsystem: nil, bundleIdentifier: "com.gaelic-ghost.demo") == "com.gaelic-ghost.demo")
+    #expect(try BriteLog.Watch.resolvedSubsystem(subsystem: "com.gaelic-ghost.demo", bundleIdentifier: nil) == "com.gaelic-ghost.demo")
+    #expect(try BriteLog.Watch.resolvedSubsystem(subsystem: "com.gaelic-ghost.demo", bundleIdentifier: "com.gaelic-ghost.demo") == "com.gaelic-ghost.demo")
+}
+
+@Test func conflictingBundleIdentifierAndSubsystemAreRejected() async throws {
+    #expect(throws: ValidationError.self) {
+        _ = try BriteLog.Watch.resolvedSubsystem(
+            subsystem: "com.gaelic-ghost.one",
+            bundleIdentifier: "com.gaelic-ghost.two"
+        )
+    }
 }
 
 @Test func filterMatchesOnlyRequestedFields() async throws {

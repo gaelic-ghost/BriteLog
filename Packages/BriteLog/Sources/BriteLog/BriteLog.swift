@@ -20,6 +20,7 @@ struct BriteLog: AsyncParsableCommand {
 extension BriteLog {
     struct WatchPlan: Equatable, Sendable {
         var source: Source
+        var bundleIdentifier: String?
         var subsystem: String?
         var category: String?
         var process: String?
@@ -121,6 +122,9 @@ extension BriteLog {
         @Option(help: "Choose which OSLogStore scope to open.")
         var scope: Scope = .currentProcess
 
+        @Option(name: [.customLong("bundle-id")], help: "Prefer log entries from this bundle identifier. This maps to subsystem filtering.")
+        var bundleIdentifier: String?
+
         @Option(help: "Prefer log entries from this subsystem.")
         var subsystem: String?
 
@@ -161,9 +165,14 @@ extension BriteLog {
         var simplifyOutput = false
 
         func run() async throws {
+            let resolvedSubsystem = try Self.resolvedSubsystem(
+                subsystem: subsystem,
+                bundleIdentifier: bundleIdentifier
+            )
             let plan = WatchPlan(
                 source: source,
-                subsystem: subsystem,
+                bundleIdentifier: bundleIdentifier,
+                subsystem: resolvedSubsystem,
                 category: category,
                 process: process,
                 processIdentifier: processIdentifier,
@@ -181,7 +190,7 @@ extension BriteLog {
             let liveRequest = BriteLogLiveRequest(
                 start: sinceSeconds > 0 ? .secondsBack(sinceSeconds) : .now,
                 filter: BriteLogFilter(
-                    subsystem: subsystem,
+                    subsystem: resolvedSubsystem,
                     category: category,
                     process: process,
                     processIdentifier: processIdentifier,
@@ -244,6 +253,7 @@ extension BriteLog {
                 BriteLog live watch started.
                   source: \(plan.source.rawValue)
                   scope: \(scope.rawValue)
+                  bundle id: \(plan.bundleIdentifier ?? "any")
                   subsystem: \(plan.subsystem ?? "any")
                   category: \(plan.category ?? "any")
                   process: \(plan.process ?? "any")
@@ -259,6 +269,30 @@ extension BriteLog {
                   persist highlights: \(plan.persistHighlights ? "yes" : "no")
                 """
             )
+        }
+
+        static func resolvedSubsystem(
+            subsystem: String?,
+            bundleIdentifier: String?
+        ) throws -> String? {
+            switch (subsystem, bundleIdentifier) {
+            case let (.some(subsystem), .some(bundleIdentifier)):
+                guard subsystem == bundleIdentifier else {
+                    throw ValidationError(
+                        """
+                        `--bundle-id` maps to subsystem filtering, so it must match `--subsystem` when both are provided.
+                        Received bundle id `\(bundleIdentifier)` and subsystem `\(subsystem)`.
+                        """
+                    )
+                }
+                return subsystem
+            case let (.some(subsystem), nil):
+                return subsystem
+            case let (nil, .some(bundleIdentifier)):
+                return bundleIdentifier
+            case (nil, nil):
+                return nil
+            }
         }
 
         private func printScopeNoteIfNeeded(
