@@ -411,28 +411,40 @@ extension BriteLog {
         static let configuration = CommandConfiguration(
             commandName: "themes",
             abstract: "List available color themes and manage the saved default.",
-            subcommands: [Select.self]
+            subcommands: [List.self, Select.self]
         )
 
         mutating func run() throws {
-            let store = BriteLogConfigurationStore()
-            let configuration = try store.load()
-            let selected = configuration.selectedTheme ?? .xcode
+            var command = List()
+            try command.run()
+        }
 
-            print("BriteLog themes")
-            for theme in Theme.allCases {
-                let marker = theme == selected ? "*" : " "
-                let suffix = theme == selected ? " (current default)" : ""
-                print("\(marker) \(theme.rawValue) - \(theme.displayName)\(suffix)")
-                print("  \(theme.summary)")
-            }
-
-            print(
-                """
-
-                Use `swift run BriteLog themes select <theme>` to change the saved default.
-                """
+        struct List: ParsableCommand {
+            static let configuration = CommandConfiguration(
+                commandName: "list",
+                abstract: "List available color themes and show the saved default."
             )
+
+            mutating func run() throws {
+                let store = BriteLogConfigurationStore()
+                let configuration = try store.load()
+                let selected = configuration.selectedTheme ?? .xcode
+
+                print("BriteLog themes")
+                for theme in Theme.allCases {
+                    let marker = theme == selected ? "*" : " "
+                    let suffix = theme == selected ? " (current default)" : ""
+                    print("\(marker) \(theme.rawValue) - \(theme.displayName)\(suffix)")
+                    print("  \(theme.summary)")
+                }
+
+                print(
+                    """
+
+                    Use `swift run BriteLog themes select <theme>` to change the saved default.
+                    """
+                )
+            }
         }
 
         struct Select: ParsableCommand {
