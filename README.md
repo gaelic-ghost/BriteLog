@@ -16,7 +16,7 @@ Like macOS logs, but they're colorful~
 
 ### Status
 
-This project is in early development, but the package CLI and Xcode wrapper both build and run.
+This project is in early development. The package CLI builds and runs today, and the Xcode wrapper builds and signs correctly, but wrapper execution is currently gated by the restricted `com.apple.logging.local-store` entitlement until the matching provisioning profile path is in place.
 
 ### What This Project Is
 
@@ -37,6 +37,7 @@ swift run BriteLog watch --this-app
 ```
 
 If you want the signed Xcode wrapper path for entitlement work, open `Apps/BriteLogTool/BriteLogTool.xcodeproj` in Xcode and build the `BriteLogTool` scheme.
+On this machine today, launching that built wrapper outside the right provisioning context is blocked by macOS policy because `com.apple.logging.local-store` is being enforced as a restricted entitlement.
 
 ## Usage
 
@@ -134,6 +135,18 @@ Workspace-level validation:
 scripts/repo-maintenance/validate-all.sh
 xcodebuild -project Apps/BriteLogTool/BriteLogTool.xcodeproj -scheme BriteLogTool -configuration Debug build
 ```
+
+Executable-level smoke checks:
+
+```bash
+cd Packages/BriteLog
+swift test
+scripts/integration/smoke-xcode-wrapper.sh
+```
+
+The wrapper smoke script accepts two honest outcomes:
+- the Xcode wrapper executes and passes its basic CLI checks
+- macOS blocks launch with an `Unsatisfied Entitlements: com.apple.logging.local-store` policy failure, which confirms the current restricted-entitlement gate
 
 ## Repo Structure
 

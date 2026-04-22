@@ -2,7 +2,7 @@ import BriteLogCLI
 
 @available(macOS 10.15, *)
 @main
-enum BriteLogExecutable {
+enum BriteLogToolExecutable {
     static func main() {
         runBriteLogCLI()
     }

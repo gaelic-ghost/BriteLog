@@ -6,6 +6,10 @@
 	objectVersion = 77;
 	objects = {
 
+/* Begin PBXBuildFile section */
+		497662BF2F997C6D00EC6060 /* BriteLogCLI in Frameworks */ = {isa = PBXBuildFile; productRef = 497662B72F99850000EC6060 /* BriteLogCLI */; };
+/* End PBXBuildFile section */
+
 /* Begin PBXCopyFilesBuildPhase section */
 		497662A82F996D6700EC6060 /* CopyFiles */ = {
 			isa = PBXCopyFilesBuildPhase;
@@ -35,6 +39,7 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+				497662BF2F997C6D00EC6060 /* BriteLogCLI in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

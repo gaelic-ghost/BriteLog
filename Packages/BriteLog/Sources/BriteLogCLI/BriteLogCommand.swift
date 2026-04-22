@@ -1,9 +1,10 @@
 import ArgumentParser
 import BriteLogCore
 import BriteLogOSLogStore
+import Dispatch
 import Foundation
 
-public struct BriteLogCommand: AsyncParsableCommand {
+public struct BriteLogCommand: ParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "britelog",
         abstract: "Restyle and simplify unified log output while you debug macOS apps.",
@@ -124,7 +125,7 @@ extension BriteLogCommand {
         }
     }
 
-    struct Watch: AsyncParsableCommand {
+    struct Watch: ParsableCommand {
         static let configuration = CommandConfiguration(
             abstract: "Tail live log entries through the first supported ingestion source.",
         )
@@ -315,7 +316,29 @@ extension BriteLogCommand {
             """
         }
 
-        func run() async throws {
+        func run() throws {
+            let semaphore = DispatchSemaphore(value: 0)
+            final class ErrorBox: @unchecked Sendable {
+                var error: Error?
+            }
+            let errorBox = ErrorBox()
+
+            Task {
+                do {
+                    try await runAsync()
+                } catch {
+                    errorBox.error = error
+                }
+                semaphore.signal()
+            }
+
+            semaphore.wait()
+            if let error = errorBox.error {
+                throw error
+            }
+        }
+
+        private func runAsync() async throws {
             let resolvedBundleIdentifier = try Self.resolvedBundleIdentifier(
                 bundleIdentifier: bundleIdentifier,
                 thisApp: thisApp,

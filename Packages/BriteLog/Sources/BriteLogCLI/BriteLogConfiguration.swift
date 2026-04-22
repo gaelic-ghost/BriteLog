@@ -21,18 +21,25 @@ struct BriteLogConfigurationStore {
     }
 
     static func defaultConfigURL(fileManager: FileManager) -> URL {
-        fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config", isDirectory: true)
+        configurationRoot(fileManager: fileManager)
             .appendingPathComponent("gaelic-ghost", isDirectory: true)
             .appendingPathComponent("britelog", isDirectory: true)
             .appendingPathComponent("config.json")
     }
 
     static func legacyConfigURL(fileManager: FileManager) -> URL {
-        fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config", isDirectory: true)
+        configurationRoot(fileManager: fileManager)
             .appendingPathComponent("britelog", isDirectory: true)
             .appendingPathComponent("config.json")
+    }
+
+    private static func configurationRoot(fileManager: FileManager) -> URL {
+        if let override = ProcessInfo.processInfo.environment["XDG_CONFIG_HOME"], !override.isEmpty {
+            return URL(fileURLWithPath: override, isDirectory: true)
+        }
+
+        return fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config", isDirectory: true)
     }
 
     func load() throws -> BriteLogConfiguration {
