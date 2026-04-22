@@ -160,6 +160,15 @@ xcodebuild -project Apps/BriteLogTool/BriteLogTool.xcodeproj -scheme BriteLogToo
 
 Formal GitHub release notes are not established yet. For now, the main shipped milestones and structural changes are tracked in git history, and the workspace is still evolving quickly as the package CLI and Xcode wrapper settle into shape.
 
+The current direct-distribution plan is:
+
+- a system-wide `.pkg` installer as the default download
+- a per-user `.zip` bundle with `install.sh` for `~/.local/...`
+
+Those artifacts can now be built under `dist/` and uploaded to the GitHub release for the matching tag through the repo-maintenance release flow when the signing and notarization inputs are configured.
+
+See [docs/distribution.md](./docs/distribution.md) for the current packaging layout, signing/notarization inputs, and GitHub release-hosting commands.
+
 ## License
 
 See [LICENSE](./LICENSE).
