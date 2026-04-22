@@ -77,12 +77,31 @@ import Testing
         .temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     let configURL = temporaryDirectory.appendingPathComponent("config.json")
-    let store = BriteLogConfigurationStore(configURL: configURL)
+    let legacyConfigURL = temporaryDirectory.appendingPathComponent("legacy.json")
+    let store = BriteLogConfigurationStore(configURL: configURL, legacyConfigURL: legacyConfigURL)
 
     try store.save(BriteLogConfiguration(selectedTheme: .neon))
     let loaded = try store.load()
 
     #expect(loaded.selectedTheme == BriteLogCommand.Theme.neon)
+}
+
+@Test func `configuration store falls back to the legacy config location`() throws {
+    let temporaryDirectory = FileManager.default
+        .temporaryDirectory
+        .appendingPathComponent(UUID().uuidString, isDirectory: true)
+    let configURL = temporaryDirectory.appendingPathComponent("config.json")
+    let legacyConfigURL = temporaryDirectory.appendingPathComponent("legacy.json")
+    let store = BriteLogConfigurationStore(configURL: configURL, legacyConfigURL: legacyConfigURL)
+
+    try FileManager.default.createDirectory(at: temporaryDirectory, withIntermediateDirectories: true)
+    try JSONEncoder.pretty
+        .encode(BriteLogConfiguration(selectedTheme: .plain))
+        .write(to: legacyConfigURL, options: .atomic)
+
+    let loaded = try store.load()
+
+    #expect(loaded.selectedTheme == .plain)
 }
 
 @Test func `self watch resolves current process scope`() {

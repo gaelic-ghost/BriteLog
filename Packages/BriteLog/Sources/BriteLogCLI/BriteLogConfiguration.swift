@@ -8,18 +8,41 @@ struct BriteLogConfiguration: Codable, Equatable {
 struct BriteLogConfigurationStore {
     var fileManager: FileManager
     var configURL: URL
+    var legacyConfigURL: URL
 
     init(
         fileManager: FileManager = .default,
         configURL: URL? = nil,
+        legacyConfigURL: URL? = nil,
     ) {
         self.fileManager = fileManager
         self.configURL = configURL ?? Self.defaultConfigURL(fileManager: fileManager)
+        self.legacyConfigURL = legacyConfigURL ?? Self.legacyConfigURL(fileManager: fileManager)
+    }
+
+    static func defaultConfigURL(fileManager: FileManager) -> URL {
+        fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config", isDirectory: true)
+            .appendingPathComponent("gaelic-ghost", isDirectory: true)
+            .appendingPathComponent("britelog", isDirectory: true)
+            .appendingPathComponent("config.json")
+    }
+
+    static func legacyConfigURL(fileManager: FileManager) -> URL {
+        fileManager.homeDirectoryForCurrentUser
+            .appendingPathComponent(".config", isDirectory: true)
+            .appendingPathComponent("britelog", isDirectory: true)
+            .appendingPathComponent("config.json")
     }
 
     func load() throws -> BriteLogConfiguration {
         guard fileManager.fileExists(atPath: configURL.path) else {
-            return .init(selectedTheme: nil)
+            guard fileManager.fileExists(atPath: legacyConfigURL.path) else {
+                return .init(selectedTheme: nil)
+            }
+
+            let legacyData = try Data(contentsOf: legacyConfigURL)
+            return try JSONDecoder().decode(BriteLogConfiguration.self, from: legacyData)
         }
 
         let data = try Data(contentsOf: configURL)
@@ -31,13 +54,6 @@ struct BriteLogConfigurationStore {
         try fileManager.createDirectory(at: directoryURL, withIntermediateDirectories: true)
         let data = try JSONEncoder.pretty.encode(configuration)
         try data.write(to: configURL, options: .atomic)
-    }
-
-    static func defaultConfigURL(fileManager: FileManager) -> URL {
-        fileManager.homeDirectoryForCurrentUser
-            .appendingPathComponent(".config", isDirectory: true)
-            .appendingPathComponent("britelog", isDirectory: true)
-            .appendingPathComponent("config.json")
     }
 }
 
