@@ -6,6 +6,7 @@ import BriteLogCore
 @Test func watchPlanCarriesChosenPresentationDefaults() async throws {
     let plan = BriteLog.WatchPlan(
         source: .oslogStore,
+        selfWatch: false,
         thisApp: false,
         bundleIdentifier: "com.gaelic-ghost.demo",
         subsystem: "com.gaelic-ghost.demo",
@@ -24,6 +25,7 @@ import BriteLogCore
     )
 
     #expect(plan.source == .oslogStore)
+    #expect(!plan.selfWatch)
     #expect(!plan.thisApp)
     #expect(plan.bundleIdentifier == "com.gaelic-ghost.demo")
     #expect(plan.subsystem == "com.gaelic-ghost.demo")
@@ -47,6 +49,11 @@ import BriteLogCore
     #expect(BriteLog.Level.allCases.map(\.rawValue) == ["trace", "debug", "info", "notice", "warning", "error", "fault", "critical"])
     #expect(BriteLog.Source.allCases.map(\.rawValue) == ["oslog-store"])
     #expect(BriteLog.Scope.allCases.map(\.rawValue) == ["current-process", "local-store"])
+}
+
+@Test func selfWatchResolvesCurrentProcessScope() async throws {
+    #expect(BriteLog.Watch.resolvedScope(selfWatch: false) == .localStore)
+    #expect(BriteLog.Watch.resolvedScope(selfWatch: true) == .currentProcess)
 }
 
 @Test func bundleIdentifierResolvesToSubsystemFilter() async throws {

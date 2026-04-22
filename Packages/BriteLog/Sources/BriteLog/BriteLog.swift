@@ -20,6 +20,7 @@ struct BriteLog: AsyncParsableCommand {
 extension BriteLog {
     struct WatchPlan: Equatable, Sendable {
         var source: Source
+        var selfWatch: Bool
         var thisApp: Bool
         var bundleIdentifier: String?
         var subsystem: String?
@@ -120,8 +121,8 @@ extension BriteLog {
         @Option(help: "Choose where log entries come from.")
         var source: Source = .oslogStore
 
-        @Option(help: "Choose which OSLogStore scope to open.")
-        var scope: Scope = .currentProcess
+        @Flag(name: [.customLong("self")], help: "Watch log entries emitted by the running BriteLog process itself.")
+        var selfWatch = false
 
         @Flag(name: [.customLong("this-app")], help: "Resolve a bundle identifier from the current directory's single `.xcodeproj` and watch that app.")
         var thisApp = false
@@ -177,8 +178,10 @@ extension BriteLog {
                 subsystem: subsystem,
                 bundleIdentifier: resolvedBundleIdentifier
             )
+            let resolvedScope = Self.resolvedScope(selfWatch: selfWatch)
             let plan = WatchPlan(
                 source: source,
+                selfWatch: selfWatch,
                 thisApp: thisApp,
                 bundleIdentifier: resolvedBundleIdentifier,
                 subsystem: resolvedSubsystem,
@@ -213,10 +216,10 @@ extension BriteLog {
                 theme: theme.coreTheme,
                 metadataMode: metadata.coreMode
             )
-            let source = makeLiveSource(for: source, scope: scope)
+            let source = makeLiveSource(for: source, scope: resolvedScope)
 
-            printStartupBanner(for: plan, scope: scope)
-            printScopeNoteIfNeeded(for: liveRequest.filter, scope: scope)
+            printStartupBanner(for: plan, scope: resolvedScope)
+            printScopeNoteIfNeeded(for: liveRequest.filter, scope: resolvedScope)
 
             do {
                 let stream = try source.liveEntries(matching: liveRequest)
@@ -261,6 +264,7 @@ extension BriteLog {
                 """
                 BriteLog live watch started.
                   source: \(plan.source.rawValue)
+                  self: \(plan.selfWatch ? "yes" : "no")
                   scope: \(scope.rawValue)
                   this app: \(plan.thisApp ? "yes" : "no")
                   bundle id: \(plan.bundleIdentifier ?? "any")
@@ -326,6 +330,10 @@ extension BriteLog {
                 )
             }
             return bundleIdentifier
+        }
+
+        static func resolvedScope(selfWatch: Bool) -> Scope {
+            selfWatch ? .currentProcess : .localStore
         }
 
         private func printScopeNoteIfNeeded(
