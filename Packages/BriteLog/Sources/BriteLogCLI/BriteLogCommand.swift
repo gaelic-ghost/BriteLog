@@ -1,25 +1,25 @@
-import Foundation
 import ArgumentParser
 import BriteLogCore
 import BriteLogOSLogStore
+import Foundation
 
 public struct BriteLogCommand: AsyncParsableCommand {
     public static let configuration = CommandConfiguration(
         commandName: "britelog",
         abstract: "Restyle and simplify unified log output while you debug macOS apps.",
         discussion: """
-            BriteLog is a macOS-focused CLI for watching app logs and re-rendering them with terminal-friendly themes.
-            The first live ingestion path reads Apple's unified logging system through OSLogStore and keeps the
-            ingestion boundary separate from rendering so later sources can land in their own module.
-            """,
-        subcommands: [Watch.self, Themes.self, Doctor.self]
+        BriteLog is a macOS-focused CLI for watching app logs and re-rendering them with terminal-friendly themes.
+        The first live ingestion path reads Apple's unified logging system through OSLogStore and keeps the
+        ingestion boundary separate from rendering so later sources can land in their own module.
+        """,
+        subcommands: [Watch.self, Themes.self, Doctor.self],
     )
 
     public init() {}
 }
 
 extension BriteLogCommand {
-    struct WatchPlan: Equatable, Sendable {
+    struct WatchPlan: Equatable {
         var source: Source
         var allLogs: Bool
         var selfWatch: Bool
@@ -40,16 +40,16 @@ extension BriteLogCommand {
         var pollIntervalSeconds: Double
     }
 
-    enum Source: String, CaseIterable, ExpressibleByArgument, Sendable {
+    enum Source: String, CaseIterable, ExpressibleByArgument {
         case oslogStore = "oslog-store"
     }
 
-    enum Scope: String, CaseIterable, ExpressibleByArgument, Sendable {
+    enum Scope: String, CaseIterable, ExpressibleByArgument {
         case currentProcess = "current-process"
         case localStore = "local-store"
     }
 
-    enum Level: String, CaseIterable, ExpressibleByArgument, Sendable {
+    enum Level: String, CaseIterable, ExpressibleByArgument {
         case trace
         case debug
         case info
@@ -61,63 +61,63 @@ extension BriteLogCommand {
 
         var coreLevel: BriteLogRecord.Level {
             switch self {
-            case .trace:
-                .trace
-            case .debug:
-                .debug
-            case .info:
-                .info
-            case .notice:
-                .notice
-            case .warning:
-                .warning
-            case .error:
-                .error
-            case .fault:
-                .fault
-            case .critical:
-                .critical
+                case .trace:
+                    .trace
+                case .debug:
+                    .debug
+                case .info:
+                    .info
+                case .notice:
+                    .notice
+                case .warning:
+                    .warning
+                case .error:
+                    .error
+                case .fault:
+                    .fault
+                case .critical:
+                    .critical
             }
         }
     }
 
-    enum Theme: String, CaseIterable, ExpressibleByArgument, Codable, Sendable {
+    enum Theme: String, CaseIterable, ExpressibleByArgument, Codable {
         case xcode
         case neon
         case plain
 
         var coreTheme: BriteLogTheme {
             switch self {
-            case .xcode:
-                .xcode
-            case .neon:
-                .neon
-            case .plain:
-                .plain
+                case .xcode:
+                    .xcode
+                case .neon:
+                    .neon
+                case .plain:
+                    .plain
             }
         }
     }
 
-    enum MetadataMode: String, CaseIterable, ExpressibleByArgument, Sendable {
+    enum MetadataMode: String, CaseIterable, ExpressibleByArgument {
         case full
         case compact
         case hidden
 
         var coreMode: BriteLogMetadataMode {
             switch self {
-            case .full:
-                .full
-            case .compact:
-                .compact
-            case .hidden:
-                .hidden
+                case .full:
+                    .full
+                case .compact:
+                    .compact
+                case .hidden:
+                    .hidden
             }
         }
     }
 
     struct Watch: AsyncParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Tail live log entries through the first supported ingestion source."
+            abstract: "Tail live log entries through the first supported ingestion source.",
         )
 
         @Option(help: "Choose where log entries come from.")
@@ -174,14 +174,86 @@ extension BriteLogCommand {
         @Flag(help: "Trim or simplify repetitive metadata where possible.")
         var simplifyOutput = false
 
+        static func resolvedSubsystem(
+            subsystem: String?,
+            bundleIdentifier: String?,
+        ) throws -> String? {
+            switch (subsystem, bundleIdentifier) {
+                case let (.some(subsystem), .some(bundleIdentifier)):
+                    guard subsystem == bundleIdentifier else {
+                        throw ValidationError(
+                            """
+                            `--bundle-id` maps to subsystem filtering, so it must match `--subsystem` when both are provided.
+                            Received bundle id `\(bundleIdentifier)` and subsystem `\(subsystem)`.
+                            """,
+                        )
+                    }
+
+                    return subsystem
+                case let (.some(subsystem), nil):
+                    return subsystem
+                case let (nil, .some(bundleIdentifier)):
+                    return bundleIdentifier
+                case (nil, nil):
+                    return nil
+            }
+        }
+
+        static func resolvedBundleIdentifier(
+            bundleIdentifier: String?,
+            thisApp: Bool,
+            inferThisAppBundleIdentifier: () throws -> String = { try ThisAppBundleIdentifierResolver().resolve() },
+        ) throws -> String? {
+            guard thisApp else {
+                return bundleIdentifier
+            }
+
+            let inferred = try inferThisAppBundleIdentifier()
+            guard let bundleIdentifier else {
+                return inferred
+            }
+            guard bundleIdentifier == inferred else {
+                throw ValidationError(
+                    """
+                    `--this-app` resolved bundle id `\(inferred)`, which does not match the explicit `--bundle-id`
+                    value `\(bundleIdentifier)`.
+                    """,
+                )
+            }
+
+            return bundleIdentifier
+        }
+
+        static func resolvedScope(selfWatch: Bool) -> Scope {
+            selfWatch ? .currentProcess : .localStore
+        }
+
+        static func resolvedTheme(
+            theme: Theme?,
+            loadConfiguration: () throws -> BriteLogConfiguration = { try BriteLogConfigurationStore().load() },
+        ) throws -> Theme {
+            if let theme {
+                return theme
+            }
+            return try loadConfiguration().selectedTheme ?? .xcode
+        }
+
+        static func shouldStartWatching(
+            allLogs: Bool,
+            selfWatch: Bool,
+            filter: BriteLogFilter,
+        ) -> Bool {
+            allLogs || selfWatch || filter.hasFocusConstraint
+        }
+
         func run() async throws {
             let resolvedBundleIdentifier = try Self.resolvedBundleIdentifier(
                 bundleIdentifier: bundleIdentifier,
-                thisApp: thisApp
+                thisApp: thisApp,
             )
             let resolvedSubsystem = try Self.resolvedSubsystem(
                 subsystem: subsystem,
-                bundleIdentifier: resolvedBundleIdentifier
+                bundleIdentifier: resolvedBundleIdentifier,
             )
             let resolvedScope = Self.resolvedScope(selfWatch: selfWatch)
             let resolvedTheme = try Self.resolvedTheme(theme: theme)
@@ -203,7 +275,7 @@ extension BriteLogCommand {
                 persistHighlights: persistHighlights,
                 simplifyOutput: simplifyOutput,
                 lookbackSeconds: sinceSeconds,
-                pollIntervalSeconds: pollInterval
+                pollIntervalSeconds: pollInterval,
             )
 
             let liveRequest = BriteLogLiveRequest(
@@ -215,20 +287,20 @@ extension BriteLogCommand {
                     processIdentifier: processIdentifier,
                     sender: sender,
                     messageContains: messageContains,
-                    minimumLevel: minimumLevel?.coreLevel
+                    minimumLevel: minimumLevel?.coreLevel,
                 ),
-                pollInterval: .milliseconds(Int64((max(pollInterval, 0.1) * 1000).rounded()))
+                pollInterval: .milliseconds(Int64((max(pollInterval, 0.1) * 1000).rounded())),
             )
             let renderer = BriteLogRenderer(
                 theme: resolvedTheme.coreTheme,
-                metadataMode: metadata.coreMode
+                metadataMode: metadata.coreMode,
             )
             let source = makeLiveSource(for: source, scope: resolvedScope)
 
             guard Self.shouldStartWatching(
                 allLogs: allLogs,
                 selfWatch: selfWatch,
-                filter: liveRequest.filter
+                filter: liveRequest.filter,
             ) else {
                 printIntro()
                 return
@@ -248,33 +320,33 @@ extension BriteLogCommand {
                     \(error.localizedDescription)
 
                     Tip: run `britelog doctor` to see which OSLogStore scopes are available in this build and environment.
-                    """
+                    """,
                 )
             }
         }
 
         private func makeLiveSource(
             for source: Source,
-            scope: Scope
+            scope: Scope,
         ) -> some BriteLogLiveSource {
             switch source {
-            case .oslogStore:
-                BriteLogOSLogStoreSource(scope: coreScope(from: scope))
+                case .oslogStore:
+                    BriteLogOSLogStoreSource(scope: coreScope(from: scope))
             }
         }
 
         private func coreScope(from scope: Scope) -> BriteLogOSLogStoreScope {
             switch scope {
-            case .currentProcess:
-                .currentProcess
-            case .localStore:
-                .localStore
+                case .currentProcess:
+                    .currentProcess
+                case .localStore:
+                    .localStore
             }
         }
 
         private func printStartupBanner(
             for plan: WatchPlan,
-            scope: Scope
+            scope: Scope,
         ) {
             print(
                 """
@@ -298,77 +370,8 @@ extension BriteLogCommand {
                   poll interval: \(plan.pollIntervalSeconds)s
                   simplify output: \(plan.simplifyOutput ? "yes" : "no")
                   persist highlights: \(plan.persistHighlights ? "yes" : "no")
-                """
+                """,
             )
-        }
-
-        static func resolvedSubsystem(
-            subsystem: String?,
-            bundleIdentifier: String?
-        ) throws -> String? {
-            switch (subsystem, bundleIdentifier) {
-            case let (.some(subsystem), .some(bundleIdentifier)):
-                guard subsystem == bundleIdentifier else {
-                    throw ValidationError(
-                        """
-                        `--bundle-id` maps to subsystem filtering, so it must match `--subsystem` when both are provided.
-                        Received bundle id `\(bundleIdentifier)` and subsystem `\(subsystem)`.
-                        """
-                    )
-                }
-                return subsystem
-            case let (.some(subsystem), nil):
-                return subsystem
-            case let (nil, .some(bundleIdentifier)):
-                return bundleIdentifier
-            case (nil, nil):
-                return nil
-            }
-        }
-
-        static func resolvedBundleIdentifier(
-            bundleIdentifier: String?,
-            thisApp: Bool,
-            inferThisAppBundleIdentifier: () throws -> String = { try ThisAppBundleIdentifierResolver().resolve() }
-        ) throws -> String? {
-            guard thisApp else {
-                return bundleIdentifier
-            }
-            let inferred = try inferThisAppBundleIdentifier()
-            guard let bundleIdentifier else {
-                return inferred
-            }
-            guard bundleIdentifier == inferred else {
-                throw ValidationError(
-                    """
-                    `--this-app` resolved bundle id `\(inferred)`, which does not match the explicit `--bundle-id`
-                    value `\(bundleIdentifier)`.
-                    """
-                )
-            }
-            return bundleIdentifier
-        }
-
-        static func resolvedScope(selfWatch: Bool) -> Scope {
-            selfWatch ? .currentProcess : .localStore
-        }
-
-        static func resolvedTheme(
-            theme: Theme?,
-            loadConfiguration: () throws -> BriteLogConfiguration = { try BriteLogConfigurationStore().load() }
-        ) throws -> Theme {
-            if let theme {
-                return theme
-            }
-            return try loadConfiguration().selectedTheme ?? .xcode
-        }
-
-        static func shouldStartWatching(
-            allLogs: Bool,
-            selfWatch: Bool,
-            filter: BriteLogFilter
-        ) -> Bool {
-            allLogs || selfWatch || filter.hasFocusConstraint
         }
 
         private func printIntro() {
@@ -387,13 +390,13 @@ extension BriteLogCommand {
                   - Plain `watch` does not start the full machine-wide stream by default.
                   - Use `--all` or `--console` if you really want the broader macOS log firehose.
                   - Use `--self` only when you want to debug BriteLog itself.
-                """
+                """,
             )
         }
 
         private func printScopeNoteIfNeeded(
             for filter: BriteLogFilter,
-            scope: Scope
+            scope: Scope,
         ) {
             guard scope == .localStore, !filter.hasFocusConstraint else {
                 return
@@ -403,27 +406,16 @@ extension BriteLogCommand {
                 """
                 Note: `local-store` with no focus filters will watch the broader macOS log stream.
                 Add `--subsystem`, `--process`, `--process-id`, `--sender`, or `--message-contains` to narrow the watch to a target app.
-                """
+                """,
             )
         }
     }
 
     struct Themes: ParsableCommand {
-        static let configuration = CommandConfiguration(
-            commandName: "themes",
-            abstract: "List available color themes and manage the saved default.",
-            subcommands: [List.self, Select.self]
-        )
-
-        mutating func run() throws {
-            var command = List()
-            try command.run()
-        }
-
         struct List: ParsableCommand {
             static let configuration = CommandConfiguration(
                 commandName: "list",
-                abstract: "List available color themes and show the saved default."
+                abstract: "List available color themes and show the saved default.",
             )
 
             mutating func run() throws {
@@ -443,7 +435,7 @@ extension BriteLogCommand {
                     """
 
                     Use `swift run BriteLog themes select <theme>` to change the saved default.
-                    """
+                    """,
                 )
             }
         }
@@ -451,7 +443,7 @@ extension BriteLogCommand {
         struct Select: ParsableCommand {
             static let configuration = CommandConfiguration(
                 commandName: "select",
-                abstract: "Save a default theme for later BriteLog runs."
+                abstract: "Save a default theme for later BriteLog runs.",
             )
 
             @Argument(help: "The theme to save as the default.")
@@ -467,22 +459,33 @@ extension BriteLogCommand {
                     """
                     Saved BriteLog default theme: \(theme.rawValue)
                     \(theme.summary)
-                    """
+                    """,
                 )
             }
+        }
+
+        static let configuration = CommandConfiguration(
+            commandName: "themes",
+            abstract: "List available color themes and manage the saved default.",
+            subcommands: [List.self, Select.self],
+        )
+
+        mutating func run() throws {
+            var command = List()
+            try command.run()
         }
     }
 
     struct Doctor: ParsableCommand {
         static let configuration = CommandConfiguration(
-            abstract: "Report which OSLogStore access paths are available in the current environment."
+            abstract: "Report which OSLogStore access paths are available in the current environment.",
         )
 
         mutating func run() throws {
             print(
                 """
                 BriteLog doctor
-                """
+                """,
             )
 
             for capability in BriteLogOSLogStoreSource.capabilityReport() {
@@ -491,7 +494,7 @@ extension BriteLogCommand {
                     """
                       \(capability.scope.rawValue): \(status)
                         \(capability.summary)
-                    """
+                    """,
                 )
                 if let detail = capability.detail {
                     print("    \(detail)")
@@ -505,7 +508,7 @@ extension BriteLogCommand {
                   - `current-process` is the narrow safe path and only sees logs emitted by the running BriteLog process.
                   - `local-store` is the broader macOS path for cross-process reading, but Apple documents that it requires system permission and the `com.apple.logging.local-store` entitlement.
                   - If `local-store` is unavailable here, a simple signed wrapper app may still not be enough on its own; the real distribution story depends on whether this build can carry the needed entitlement.
-                """
+                """,
             )
         }
     }

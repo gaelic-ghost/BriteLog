@@ -11,7 +11,7 @@ let package = Package(
     products: [
         .library(
             name: "BriteLogCLI",
-            targets: ["BriteLogCLI"]
+            targets: ["BriteLogCLI"],
         ),
     ],
     dependencies: [
@@ -19,11 +19,11 @@ let package = Package(
     ],
     targets: [
         .target(
-            name: "BriteLogCore"
+            name: "BriteLogCore",
         ),
         .target(
             name: "BriteLogOSLogStore",
-            dependencies: ["BriteLogCore"]
+            dependencies: ["BriteLogCore"],
         ),
         .target(
             name: "BriteLogCLI",
@@ -31,13 +31,13 @@ let package = Package(
                 "BriteLogCore",
                 "BriteLogOSLogStore",
                 .product(name: "ArgumentParser", package: "swift-argument-parser"),
-            ]
+            ],
         ),
         .executableTarget(
             name: "BriteLog",
             dependencies: [
                 "BriteLogCLI",
-            ]
+            ],
         ),
         .testTarget(
             name: "BriteLogTests",
@@ -46,8 +46,8 @@ let package = Package(
                 "BriteLogCLI",
                 "BriteLogCore",
                 "BriteLogOSLogStore",
-            ]
+            ],
         ),
     ],
-    swiftLanguageModes: [.v6]
+    swiftLanguageModes: [.v6],
 )

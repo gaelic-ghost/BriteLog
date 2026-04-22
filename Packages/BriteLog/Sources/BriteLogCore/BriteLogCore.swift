@@ -14,24 +14,24 @@ public struct BriteLogRecord: Equatable, Sendable {
 
         public var rank: Int {
             switch self {
-            case .trace:
-                0
-            case .debug:
-                1
-            case .info:
-                2
-            case .notice:
-                3
-            case .warning:
-                4
-            case .error:
-                5
-            case .fault:
-                6
-            case .critical:
-                7
-            case .undefined:
-                -1
+                case .trace:
+                    0
+                case .debug:
+                    1
+                case .info:
+                    2
+                case .notice:
+                    3
+                case .warning:
+                    4
+                case .error:
+                    5
+                case .fault:
+                    6
+                case .critical:
+                    7
+                case .undefined:
+                    -1
             }
         }
     }
@@ -48,7 +48,7 @@ public struct BriteLogRecord: Equatable, Sendable {
             processIdentifier: Int32?,
             subsystem: String,
             category: String,
-            message: String
+            message: String,
         ) {
             self.date = date
             self.processIdentifier = processIdentifier
@@ -67,6 +67,16 @@ public struct BriteLogRecord: Equatable, Sendable {
     public var sender: String?
     public var message: String
 
+    public var fingerprint: Fingerprint {
+        Fingerprint(
+            date: date,
+            processIdentifier: processIdentifier,
+            subsystem: subsystem,
+            category: category,
+            message: message,
+        )
+    }
+
     public init(
         date: Date,
         level: Level,
@@ -75,7 +85,7 @@ public struct BriteLogRecord: Equatable, Sendable {
         process: String?,
         processIdentifier: Int32?,
         sender: String?,
-        message: String
+        message: String,
     ) {
         self.date = date
         self.level = level
@@ -85,16 +95,6 @@ public struct BriteLogRecord: Equatable, Sendable {
         self.processIdentifier = processIdentifier
         self.sender = sender
         self.message = message
-    }
-
-    public var fingerprint: Fingerprint {
-        Fingerprint(
-            date: date,
-            processIdentifier: processIdentifier,
-            subsystem: subsystem,
-            category: category,
-            message: message
-        )
     }
 }
 
@@ -107,6 +107,15 @@ public struct BriteLogFilter: Equatable, Sendable {
     public var messageContains: String?
     public var minimumLevel: BriteLogRecord.Level?
 
+    public var hasFocusConstraint: Bool {
+        subsystem != nil
+            || category != nil
+            || process != nil
+            || processIdentifier != nil
+            || sender != nil
+            || messageContains != nil
+    }
+
     public init(
         subsystem: String? = nil,
         category: String? = nil,
@@ -114,7 +123,7 @@ public struct BriteLogFilter: Equatable, Sendable {
         processIdentifier: Int32? = nil,
         sender: String? = nil,
         messageContains: String? = nil,
-        minimumLevel: BriteLogRecord.Level? = nil
+        minimumLevel: BriteLogRecord.Level? = nil,
     ) {
         self.subsystem = subsystem
         self.category = category
@@ -152,15 +161,6 @@ public struct BriteLogFilter: Equatable, Sendable {
         }
         return true
     }
-
-    public var hasFocusConstraint: Bool {
-        subsystem != nil
-            || category != nil
-            || process != nil
-            || processIdentifier != nil
-            || sender != nil
-            || messageContains != nil
-    }
 }
 
 public struct BriteLogLiveRequest: Equatable, Sendable {
@@ -177,7 +177,7 @@ public struct BriteLogLiveRequest: Equatable, Sendable {
     public init(
         start: Start,
         filter: BriteLogFilter = .init(),
-        pollInterval: Duration = .seconds(1)
+        pollInterval: Duration = .seconds(1),
     ) {
         self.start = start
         self.filter = filter
@@ -199,17 +199,23 @@ public enum BriteLogMetadataMode: String, CaseIterable, Sendable {
 
 public protocol BriteLogLiveSource: Sendable {
     func liveEntries(
-        matching request: BriteLogLiveRequest
+        matching request: BriteLogLiveRequest,
     ) throws -> AsyncThrowingStream<BriteLogRecord, Error>
 }
 
 public struct BriteLogRenderer: Sendable {
+    private static let dateFormatter: DateFormatter = {
+        let formatter = DateFormatter()
+        formatter.dateFormat = "HH:mm:ss.SSS"
+        return formatter
+    }()
+
     public var theme: BriteLogTheme
     public var metadataMode: BriteLogMetadataMode
 
     public init(
         theme: BriteLogTheme,
-        metadataMode: BriteLogMetadataMode
+        metadataMode: BriteLogMetadataMode,
     ) {
         self.theme = theme
         self.metadataMode = metadataMode
@@ -229,67 +235,61 @@ public struct BriteLogRenderer: Sendable {
 
     private func renderMetadata(for record: BriteLogRecord) -> String {
         switch metadataMode {
-        case .hidden:
-            return ""
-        case .compact:
-            let process = record.process ?? "unknown-process"
-            let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
-            let category = record.category.isEmpty ? "-" : record.category
-            if let sender = record.sender, !sender.isEmpty, sender != process {
-                return "[\(process) \(sender) \(subsystem):\(category)]"
-            }
-            return "[\(process) \(subsystem):\(category)]"
-        case .full:
-            let process = record.process ?? "unknown-process"
-            let pid = record.processIdentifier.map(String.init) ?? "?"
-            let sender = record.sender ?? "-"
-            let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
-            let category = record.category.isEmpty ? "-" : record.category
-            return "[process=\(process) pid=\(pid) sender=\(sender) subsystem=\(subsystem) category=\(category)]"
+            case .hidden:
+                return ""
+            case .compact:
+                let process = record.process ?? "unknown-process"
+                let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
+                let category = record.category.isEmpty ? "-" : record.category
+                if let sender = record.sender, !sender.isEmpty, sender != process {
+                    return "[\(process) \(sender) \(subsystem):\(category)]"
+                }
+                return "[\(process) \(subsystem):\(category)]"
+            case .full:
+                let process = record.process ?? "unknown-process"
+                let pid = record.processIdentifier.map(String.init) ?? "?"
+                let sender = record.sender ?? "-"
+                let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
+                let category = record.category.isEmpty ? "-" : record.category
+                return "[process=\(process) pid=\(pid) sender=\(sender) subsystem=\(subsystem) category=\(category)]"
         }
     }
 
     private func colorize(
         _ text: String,
         for level: BriteLogRecord.Level,
-        isMessage: Bool = false
+        isMessage: Bool = false,
     ) -> String {
         guard theme != .plain else {
             return text
         }
 
         let code = switch (theme, level, isMessage) {
-        case (.xcode, .trace, false): "38;5;245"
-        case (.xcode, .debug, false): "36"
-        case (.xcode, .info, false): "32"
-        case (.xcode, .notice, false): "34"
-        case (.xcode, .warning, false): "33"
-        case (.xcode, .error, false): "31"
-        case (.xcode, .fault, false): "35"
-        case (.xcode, .critical, false): "1;31"
-        case (.xcode, .undefined, false): "37"
-        case (.neon, .trace, false): "38;5;147"
-        case (.neon, .debug, false): "38;5;51"
-        case (.neon, .info, false): "38;5;121"
-        case (.neon, .notice, false): "38;5;45"
-        case (.neon, .warning, false): "38;5;227"
-        case (.neon, .error, false): "38;5;197"
-        case (.neon, .fault, false): "38;5;201"
-        case (.neon, .critical, false): "1;38;5;199"
-        case (.neon, .undefined, false): "38;5;255"
-        case (_, .warning, true): "33"
-        case (_, .error, true): "31"
-        case (_, .fault, true): "35"
-        case (_, .critical, true): "1;31"
-        default: "0"
+            case (.xcode, .trace, false): "38;5;245"
+            case (.xcode, .debug, false): "36"
+            case (.xcode, .info, false): "32"
+            case (.xcode, .notice, false): "34"
+            case (.xcode, .warning, false): "33"
+            case (.xcode, .error, false): "31"
+            case (.xcode, .fault, false): "35"
+            case (.xcode, .critical, false): "1;31"
+            case (.xcode, .undefined, false): "37"
+            case (.neon, .trace, false): "38;5;147"
+            case (.neon, .debug, false): "38;5;51"
+            case (.neon, .info, false): "38;5;121"
+            case (.neon, .notice, false): "38;5;45"
+            case (.neon, .warning, false): "38;5;227"
+            case (.neon, .error, false): "38;5;197"
+            case (.neon, .fault, false): "38;5;201"
+            case (.neon, .critical, false): "1;38;5;199"
+            case (.neon, .undefined, false): "38;5;255"
+            case (_, .warning, true): "33"
+            case (_, .error, true): "31"
+            case (_, .fault, true): "35"
+            case (_, .critical, true): "1;31"
+            default: "0"
         }
 
         return "\u{001B}[\(code)m\(text)\u{001B}[0m"
     }
-
-    private static let dateFormatter: DateFormatter = {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "HH:mm:ss.SSS"
-        return formatter
-    }()
 }

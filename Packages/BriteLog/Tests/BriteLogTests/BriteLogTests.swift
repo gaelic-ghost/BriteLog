@@ -1,10 +1,10 @@
 import ArgumentParser
-import Foundation
-import Testing
 @testable import BriteLogCLI
 import BriteLogCore
+import Foundation
+import Testing
 
-@Test func watchPlanCarriesChosenPresentationDefaults() async throws {
+@Test func `watch plan carries chosen presentation defaults`() {
     let plan = BriteLogCommand.WatchPlan(
         source: .oslogStore,
         allLogs: false,
@@ -23,7 +23,7 @@ import BriteLogCore
         persistHighlights: true,
         simplifyOutput: true,
         lookbackSeconds: 5,
-        pollIntervalSeconds: 1
+        pollIntervalSeconds: 1,
     )
 
     #expect(plan.source == .oslogStore)
@@ -46,7 +46,7 @@ import BriteLogCore
     #expect(plan.pollIntervalSeconds == 1)
 }
 
-@Test func themeListStaysStableForCliParsing() async throws {
+@Test func `theme list stays stable for cli parsing`() {
     #expect(BriteLogCommand.Theme.allCases.map(\.rawValue) == ["xcode", "neon", "plain"])
     #expect(BriteLogCommand.MetadataMode.allCases.map(\.rawValue) == ["full", "compact", "hidden"])
     #expect(BriteLogCommand.Level.allCases.map(\.rawValue) == ["trace", "debug", "info", "notice", "warning", "error", "fault", "critical"])
@@ -54,26 +54,27 @@ import BriteLogCore
     #expect(BriteLogCommand.Scope.allCases.map(\.rawValue) == ["current-process", "local-store"])
 }
 
-@Test func watchUsesSavedThemeWhenNoExplicitThemeIsProvided() async throws {
+@Test func `watch uses saved theme when no explicit theme is provided`() throws {
     let resolved = try BriteLogCommand.Watch.resolvedTheme(
         theme: nil,
-        loadConfiguration: { .init(selectedTheme: .neon) }
+        loadConfiguration: { .init(selectedTheme: .neon) },
     )
 
     #expect(resolved == .neon)
 }
 
-@Test func explicitThemeOverridesSavedTheme() async throws {
+@Test func `explicit theme overrides saved theme`() throws {
     let resolved = try BriteLogCommand.Watch.resolvedTheme(
         theme: .plain,
-        loadConfiguration: { .init(selectedTheme: .neon) }
+        loadConfiguration: { .init(selectedTheme: .neon) },
     )
 
     #expect(resolved == .plain)
 }
 
-@Test func configurationStoreRoundTripsSelectedTheme() async throws {
-    let temporaryDirectory = FileManager.default.temporaryDirectory
+@Test func `configuration store round trips selected theme`() throws {
+    let temporaryDirectory = FileManager.default
+        .temporaryDirectory
         .appendingPathComponent(UUID().uuidString, isDirectory: true)
     let configURL = temporaryDirectory.appendingPathComponent("config.json")
     let store = BriteLogConfigurationStore(configURL: configURL)
@@ -84,78 +85,78 @@ import BriteLogCore
     #expect(loaded.selectedTheme == BriteLogCommand.Theme.neon)
 }
 
-@Test func selfWatchResolvesCurrentProcessScope() async throws {
+@Test func `self watch resolves current process scope`() {
     #expect(BriteLogCommand.Watch.resolvedScope(selfWatch: false) == .localStore)
     #expect(BriteLogCommand.Watch.resolvedScope(selfWatch: true) == .currentProcess)
 }
 
-@Test func watchStartRequiresExplicitFocusOrAllLogs() async throws {
+@Test func `watch start requires explicit focus or all logs`() {
     #expect(!BriteLogCommand.Watch.shouldStartWatching(
         allLogs: false,
         selfWatch: false,
-        filter: .init()
+        filter: .init(),
     ))
     #expect(BriteLogCommand.Watch.shouldStartWatching(
         allLogs: true,
         selfWatch: false,
-        filter: .init()
+        filter: .init(),
     ))
     #expect(BriteLogCommand.Watch.shouldStartWatching(
         allLogs: false,
         selfWatch: true,
-        filter: .init()
+        filter: .init(),
     ))
     #expect(BriteLogCommand.Watch.shouldStartWatching(
         allLogs: false,
         selfWatch: false,
-        filter: .init(subsystem: "com.gaelic-ghost.demo")
+        filter: .init(subsystem: "com.gaelic-ghost.demo"),
     ))
 }
 
-@Test func bundleIdentifierResolvesToSubsystemFilter() async throws {
+@Test func `bundle identifier resolves to subsystem filter`() throws {
     #expect(try BriteLogCommand.Watch.resolvedSubsystem(subsystem: nil, bundleIdentifier: "com.gaelic-ghost.demo") == "com.gaelic-ghost.demo")
     #expect(try BriteLogCommand.Watch.resolvedSubsystem(subsystem: "com.gaelic-ghost.demo", bundleIdentifier: nil) == "com.gaelic-ghost.demo")
     #expect(try BriteLogCommand.Watch.resolvedSubsystem(subsystem: "com.gaelic-ghost.demo", bundleIdentifier: "com.gaelic-ghost.demo") == "com.gaelic-ghost.demo")
 }
 
-@Test func thisAppSchemeSelectionPrefersProjectName() async throws {
+@Test func `this app scheme selection prefers project name`() throws {
     #expect(try ThisAppBundleIdentifierResolver.chooseScheme(
         schemes: ["DemoApp", "DemoLibrary"],
-        projectName: "DemoApp"
+        projectName: "DemoApp",
     ) == "DemoApp")
 }
 
-@Test func thisAppBuildSettingsPreferMatchingAppTarget() async throws {
+@Test func `this app build settings prefer matching app target`() throws {
     let entries = [
         ThisAppBundleIdentifierResolver.BuildSettingsEntry(
             target: "DemoApp",
             buildSettings: [
                 "PRODUCT_BUNDLE_IDENTIFIER": "com.gaelic-ghost.demo",
                 "WRAPPER_EXTENSION": "app",
-            ]
+            ],
         ),
         ThisAppBundleIdentifierResolver.BuildSettingsEntry(
             target: "DemoFramework",
             buildSettings: [
                 "PRODUCT_BUNDLE_IDENTIFIER": "com.gaelic-ghost.framework",
                 "WRAPPER_EXTENSION": "framework",
-            ]
+            ],
         ),
     ]
 
     #expect(try ThisAppBundleIdentifierResolver.chooseBundleIdentifier(
         entries: entries,
         preferredName: "DemoApp",
-        projectName: "DemoApp"
+        projectName: "DemoApp",
     ) == "com.gaelic-ghost.demo")
 }
 
-@Test func explicitBundleIdentifierMustMatchThisAppInference() async throws {
+@Test func `explicit bundle identifier must match this app inference`() throws {
     do {
         _ = try BriteLogCommand.Watch.resolvedBundleIdentifier(
             bundleIdentifier: "com.gaelic-ghost.one",
             thisApp: true,
-            inferThisAppBundleIdentifier: { "com.gaelic-ghost.two" }
+            inferThisAppBundleIdentifier: { "com.gaelic-ghost.two" },
         )
         Issue.record("Expected `--this-app` inference mismatch to throw a validation error.")
     } catch {
@@ -163,16 +164,16 @@ import BriteLogCore
     }
 }
 
-@Test func conflictingBundleIdentifierAndSubsystemAreRejected() async throws {
+@Test func `conflicting bundle identifier and subsystem are rejected`() throws {
     #expect(throws: ValidationError.self) {
         _ = try BriteLogCommand.Watch.resolvedSubsystem(
             subsystem: "com.gaelic-ghost.one",
-            bundleIdentifier: "com.gaelic-ghost.two"
+            bundleIdentifier: "com.gaelic-ghost.two",
         )
     }
 }
 
-@Test func filterMatchesOnlyRequestedFields() async throws {
+@Test func `filter matches only requested fields`() {
     let record = BriteLogRecord(
         date: .init(timeIntervalSince1970: 100),
         level: .notice,
@@ -181,7 +182,7 @@ import BriteLogCore
         process: "DemoApp",
         processIdentifier: 7,
         sender: "DemoApp",
-        message: "Rendered line"
+        message: "Rendered line",
     )
 
     #expect(BriteLogFilter(subsystem: "com.gaelic-ghost.demo").matches(record))
@@ -197,7 +198,7 @@ import BriteLogCore
     #expect(!BriteLogFilter(processIdentifier: 99).matches(record))
 }
 
-@Test func rendererKeepsPlainThemeReadable() async throws {
+@Test func `renderer keeps plain theme readable`() {
     let renderer = BriteLogRenderer(theme: .plain, metadataMode: .compact)
     let rendered = renderer.render(
         BriteLogRecord(
@@ -208,8 +209,8 @@ import BriteLogCore
             process: "DemoApp",
             processIdentifier: 7,
             sender: "DemoApp Helper",
-            message: "Watch this line"
-        )
+            message: "Watch this line",
+        ),
     )
 
     #expect(rendered.contains("WARNING"))
@@ -218,7 +219,7 @@ import BriteLogCore
     #expect(!rendered.contains("\u{001B}["))
 }
 
-@Test func focusConstraintReflectsCrossProcessTargeting() async throws {
+@Test func `focus constraint reflects cross process targeting`() {
     #expect(!BriteLogFilter().hasFocusConstraint)
     #expect(BriteLogFilter(subsystem: "com.gaelic-ghost.demo").hasFocusConstraint)
     #expect(BriteLogFilter(sender: "DemoApp").hasFocusConstraint)

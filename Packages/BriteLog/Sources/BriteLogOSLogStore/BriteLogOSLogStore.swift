@@ -1,7 +1,6 @@
+import BriteLogCore
 import Foundation
 import OSLog
-
-import BriteLogCore
 
 public enum BriteLogOSLogStoreScope: String, CaseIterable, Sendable {
     case currentProcess = "current-process"
@@ -19,7 +18,7 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
             scope: BriteLogOSLogStoreScope,
             available: Bool,
             summary: String,
-            detail: String? = nil
+            detail: String? = nil,
         ) {
             self.scope = scope
             self.available = available
@@ -33,12 +32,12 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
 
         public var errorDescription: String? {
             switch self {
-            case let .localStoreUnavailable(underlying):
-                """
-                BriteLog could not read from the broader macOS unified log store. Apple documents that `OSLogStore.local()`
-                requires system permission and the `com.apple.logging.local-store` entitlement. Underlying error:
-                \(underlying.localizedDescription)
-                """
+                case let .localStoreUnavailable(underlying):
+                    """
+                    BriteLog could not read from the broader macOS unified log store. Apple documents that `OSLogStore.local()`
+                    requires system permission and the `com.apple.logging.local-store` entitlement. Underlying error:
+                    \(underlying.localizedDescription)
+                    """
             }
         }
     }
@@ -56,15 +55,59 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
         ]
     }
 
+    private static func probe(scope: BriteLogOSLogStoreScope) -> Capability {
+        switch scope {
+            case .currentProcess:
+                do {
+                    let store = try OSLogStore(scope: .currentProcessIdentifier)
+                    _ = try store.getEntries(at: store.position(date: Date()))
+                    return Capability(
+                        scope: scope,
+                        available: true,
+                        summary: "Current-process OSLogStore access is available.",
+                        detail: "This scope only reads unified log entries emitted by the current BriteLog process.",
+                    )
+                } catch {
+                    return Capability(
+                        scope: scope,
+                        available: false,
+                        summary: "Current-process OSLogStore access is unavailable.",
+                        detail: error.localizedDescription,
+                    )
+                }
+            case .localStore:
+                do {
+                    let store = try OSLogStore(scope: .system)
+                    _ = try store.getEntries(at: store.position(date: Date()))
+                    return Capability(
+                        scope: scope,
+                        available: true,
+                        summary: "Local-store OSLogStore access is available.",
+                        detail: "This broader macOS store can be used for cross-process log reading on this machine.",
+                    )
+                } catch {
+                    return Capability(
+                        scope: scope,
+                        available: false,
+                        summary: "Local-store OSLogStore access is unavailable.",
+                        detail: """
+                        Apple documents that `OSLogStore.local()` requires system permission and the \
+                        `com.apple.logging.local-store` entitlement. Current failure: \(error.localizedDescription)
+                        """,
+                    )
+                }
+        }
+    }
+
     public func liveEntries(
-        matching request: BriteLogLiveRequest
+        matching request: BriteLogLiveRequest,
     ) throws -> AsyncThrowingStream<BriteLogRecord, Error> {
         let store = try makeStore()
         let startDate = resolveStartDate(request.start)
         let cursor = Cursor(
             store: store,
             startDate: startDate,
-            filter: request.filter
+            filter: request.filter,
         )
 
         return AsyncThrowingStream { continuation in
@@ -94,69 +137,25 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
 
     private func makeStore() throws -> OSLogStore {
         switch scope {
-        case .currentProcess:
-            return try OSLogStore(scope: .currentProcessIdentifier)
-        case .localStore:
-            do {
-                return try OSLogStore(scope: .system)
-            } catch {
-                throw SourceError.localStoreUnavailable(underlying: error)
-            }
+            case .currentProcess:
+                return try OSLogStore(scope: .currentProcessIdentifier)
+            case .localStore:
+                do {
+                    return try OSLogStore(scope: .system)
+                } catch {
+                    throw SourceError.localStoreUnavailable(underlying: error)
+                }
         }
     }
 
     private func resolveStartDate(_ start: BriteLogLiveRequest.Start) -> Date {
         switch start {
-        case .now:
-            Date()
-        case let .secondsBack(seconds):
-            Date().addingTimeInterval(-seconds)
-        case let .date(date):
-            date
-        }
-    }
-
-    private static func probe(scope: BriteLogOSLogStoreScope) -> Capability {
-        switch scope {
-        case .currentProcess:
-            do {
-                let store = try OSLogStore(scope: .currentProcessIdentifier)
-                _ = try store.getEntries(at: store.position(date: Date()))
-                return Capability(
-                    scope: scope,
-                    available: true,
-                    summary: "Current-process OSLogStore access is available.",
-                    detail: "This scope only reads unified log entries emitted by the current BriteLog process."
-                )
-            } catch {
-                return Capability(
-                    scope: scope,
-                    available: false,
-                    summary: "Current-process OSLogStore access is unavailable.",
-                    detail: error.localizedDescription
-                )
-            }
-        case .localStore:
-            do {
-                let store = try OSLogStore(scope: .system)
-                _ = try store.getEntries(at: store.position(date: Date()))
-                return Capability(
-                    scope: scope,
-                    available: true,
-                    summary: "Local-store OSLogStore access is available.",
-                    detail: "This broader macOS store can be used for cross-process log reading on this machine."
-                )
-            } catch {
-                return Capability(
-                    scope: scope,
-                    available: false,
-                    summary: "Local-store OSLogStore access is unavailable.",
-                    detail: """
-                        Apple documents that `OSLogStore.local()` requires system permission and the \
-                        `com.apple.logging.local-store` entitlement. Current failure: \(error.localizedDescription)
-                        """
-                )
-            }
+            case .now:
+                Date()
+            case let .secondsBack(seconds):
+                Date().addingTimeInterval(-seconds)
+            case let .date(date):
+                date
         }
     }
 }
@@ -170,7 +169,7 @@ private actor Cursor {
     init(
         store: OSLogStore,
         startDate: Date,
-        filter: BriteLogFilter
+        filter: BriteLogFilter,
     ) {
         self.store = store
         self.filter = filter
@@ -183,22 +182,21 @@ private actor Cursor {
         var records: [BriteLogRecord] = []
 
         for case let entry as OSLogEntryLog in entries {
-            let level: BriteLogRecord.Level
-            switch entry.level {
-            case .undefined:
-                level = .undefined
-            case .debug:
-                level = .debug
-            case .info:
-                level = .info
-            case .notice:
-                level = .notice
-            case .error:
-                level = .error
-            case .fault:
-                level = .fault
-            @unknown default:
-                level = .undefined
+            let level: BriteLogRecord.Level = switch entry.level {
+                case .undefined:
+                    .undefined
+                case .debug:
+                    .debug
+                case .info:
+                    .info
+                case .notice:
+                    .notice
+                case .error:
+                    .error
+                case .fault:
+                    .fault
+                @unknown default:
+                    .undefined
             }
             let message = entry.composedMessage.trimmingCharacters(in: .whitespacesAndNewlines)
             let record = BriteLogRecord(
@@ -209,7 +207,7 @@ private actor Cursor {
                 process: entry.process,
                 processIdentifier: entry.processIdentifier,
                 sender: entry.sender,
-                message: message.isEmpty ? "<empty log message>" : message
+                message: message.isEmpty ? "<empty log message>" : message,
             )
 
             guard filter.matches(record) else {

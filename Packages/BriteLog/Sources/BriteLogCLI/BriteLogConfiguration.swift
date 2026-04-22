@@ -1,5 +1,5 @@
-import Foundation
 import ArgumentParser
+import Foundation
 
 struct BriteLogConfiguration: Codable, Equatable {
     var selectedTheme: BriteLogCommand.Theme?
@@ -11,7 +11,7 @@ struct BriteLogConfigurationStore {
 
     init(
         fileManager: FileManager = .default,
-        configURL: URL? = nil
+        configURL: URL? = nil,
     ) {
         self.fileManager = fileManager
         self.configURL = configURL ?? Self.defaultConfigURL(fileManager: fileManager)
@@ -52,23 +52,23 @@ extension JSONEncoder {
 extension BriteLogCommand.Theme {
     var displayName: String {
         switch self {
-        case .xcode:
-            "Xcode"
-        case .neon:
-            "Neon"
-        case .plain:
-            "Plain"
+            case .xcode:
+                "Xcode"
+            case .neon:
+                "Neon"
+            case .plain:
+                "Plain"
         }
     }
 
     var summary: String {
         switch self {
-        case .xcode:
-            "Balanced IDE-style colors for everyday debugging."
-        case .neon:
-            "Higher-contrast terminal colors with a brighter cyber look."
-        case .plain:
-            "No ANSI colors, just readable structured text."
+            case .xcode:
+                "Balanced IDE-style colors for everyday debugging."
+            case .neon:
+                "Higher-contrast terminal colors with a brighter cyber look."
+            case .plain:
+                "No ANSI colors, just readable structured text."
         }
     }
 }
