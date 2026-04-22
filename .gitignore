@@ -1,6 +1,11 @@
 .DS_Store
+.netrc
+
+# SwiftPM build and generated state
 **/.build/
 **/.swiftpm/
+
+# Xcode user-local state
 xcuserdata/
 DerivedData/
-.netrc
+*.xcuserstate
