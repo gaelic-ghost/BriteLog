@@ -13,7 +13,7 @@ struct BriteLog: AsyncParsableCommand {
             The first live ingestion path reads Apple's unified logging system through OSLogStore and keeps the
             ingestion boundary separate from rendering so later sources can land in their own module.
             """,
-        subcommands: [Watch.self]
+        subcommands: [Watch.self, Doctor.self]
     )
 }
 
@@ -149,9 +149,19 @@ extension BriteLog {
 
             printStartupBanner(for: plan, scope: scope)
 
-            let stream = try source.liveEntries(matching: liveRequest)
-            for try await record in stream {
-                print(renderer.render(record))
+            do {
+                let stream = try source.liveEntries(matching: liveRequest)
+                for try await record in stream {
+                    print(renderer.render(record))
+                }
+            } catch {
+                throw CleanExit.message(
+                    """
+                    \(error.localizedDescription)
+
+                    Tip: run `britelog doctor` to see which OSLogStore scopes are available in this build and environment.
+                    """
+                )
             }
         }
 
@@ -193,6 +203,43 @@ extension BriteLog {
                   poll interval: \(plan.pollIntervalSeconds)s
                   simplify output: \(plan.simplifyOutput ? "yes" : "no")
                   persist highlights: \(plan.persistHighlights ? "yes" : "no")
+                """
+            )
+        }
+    }
+
+    struct Doctor: ParsableCommand {
+        static let configuration = CommandConfiguration(
+            abstract: "Report which OSLogStore access paths are available in the current environment."
+        )
+
+        mutating func run() throws {
+            print(
+                """
+                BriteLog doctor
+                """
+            )
+
+            for capability in BriteLogOSLogStoreSource.capabilityReport() {
+                let status = capability.available ? "available" : "unavailable"
+                print(
+                    """
+                      \(capability.scope.rawValue): \(status)
+                        \(capability.summary)
+                    """
+                )
+                if let detail = capability.detail {
+                    print("    \(detail)")
+                }
+            }
+
+            print(
+                """
+
+                Notes:
+                  - `current-process` is the narrow safe path and only sees logs emitted by the running BriteLog process.
+                  - `local-store` is the broader macOS path for cross-process reading, but Apple documents that it requires system permission and the `com.apple.logging.local-store` entitlement.
+                  - If `local-store` is unavailable here, a simple signed wrapper app may still not be enough on its own; the real distribution story depends on whether this build can carry the needed entitlement.
                 """
             )
         }

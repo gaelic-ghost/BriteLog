@@ -9,6 +9,25 @@ public enum BriteLogOSLogStoreScope: String, CaseIterable, Sendable {
 }
 
 public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
+    public struct Capability: Equatable, Sendable {
+        public var scope: BriteLogOSLogStoreScope
+        public var available: Bool
+        public var summary: String
+        public var detail: String?
+
+        public init(
+            scope: BriteLogOSLogStoreScope,
+            available: Bool,
+            summary: String,
+            detail: String? = nil
+        ) {
+            self.scope = scope
+            self.available = available
+            self.summary = summary
+            self.detail = detail
+        }
+    }
+
     public enum SourceError: LocalizedError {
         case localStoreUnavailable(underlying: Error)
 
@@ -28,6 +47,13 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
 
     public init(scope: BriteLogOSLogStoreScope) {
         self.scope = scope
+    }
+
+    public static func capabilityReport() -> [Capability] {
+        [
+            probe(scope: .currentProcess),
+            probe(scope: .localStore),
+        ]
     }
 
     public func liveEntries(
@@ -87,6 +113,48 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
             Date().addingTimeInterval(-seconds)
         case let .date(date):
             date
+        }
+    }
+
+    private static func probe(scope: BriteLogOSLogStoreScope) -> Capability {
+        switch scope {
+        case .currentProcess:
+            do {
+                _ = try OSLogStore(scope: .currentProcessIdentifier)
+                return Capability(
+                    scope: scope,
+                    available: true,
+                    summary: "Current-process OSLogStore access is available.",
+                    detail: "This scope only reads unified log entries emitted by the current BriteLog process."
+                )
+            } catch {
+                return Capability(
+                    scope: scope,
+                    available: false,
+                    summary: "Current-process OSLogStore access is unavailable.",
+                    detail: error.localizedDescription
+                )
+            }
+        case .localStore:
+            do {
+                _ = try OSLogStore.local()
+                return Capability(
+                    scope: scope,
+                    available: true,
+                    summary: "Local-store OSLogStore access is available.",
+                    detail: "This broader macOS store can be used for cross-process log reading on this machine."
+                )
+            } catch {
+                return Capability(
+                    scope: scope,
+                    available: false,
+                    summary: "Local-store OSLogStore access is unavailable.",
+                    detail: """
+                        Apple documents that `OSLogStore.local()` requires system permission and the \
+                        `com.apple.logging.local-store` entitlement. Current failure: \(error.localizedDescription)
+                        """
+                )
+            }
         }
     }
 }
