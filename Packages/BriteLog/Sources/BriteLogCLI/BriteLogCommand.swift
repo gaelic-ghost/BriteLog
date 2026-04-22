@@ -129,6 +129,24 @@ extension BriteLogCommand {
             abstract: "Tail live log entries through the first supported ingestion source.",
         )
 
+        static var introText: String {
+            """
+            BriteLog watches another app's unified logs and reprints them with developer-friendly formatting.
+
+            Try one of these:
+              swift run BriteLog watch --this-app
+              swift run BriteLog watch --bundle-id com.example.MyApp
+              swift run BriteLog watch --subsystem com.example.MyApp
+              swift run BriteLog watch --process MyApp
+              swift run BriteLog watch --all
+
+            Notes:
+              - Plain `watch` does not start the full machine-wide stream by default.
+              - Use `--all` or `--console` if you really want the broader macOS log firehose.
+              - Use `--self` only when you want to debug BriteLog itself.
+            """
+        }
+
         @Option(help: "Choose where log entries come from.")
         var source: Source = .oslogStore
 
@@ -255,6 +273,48 @@ extension BriteLogCommand {
             allLogs || selfWatch || filter.hasFocusConstraint
         }
 
+        static func startupBanner(
+            for plan: WatchPlan,
+            scope: Scope,
+        ) -> String {
+            """
+            BriteLog live watch started.
+              source: \(plan.source.rawValue)
+              all logs: \(plan.allLogs ? "yes" : "no")
+              self: \(plan.selfWatch ? "yes" : "no")
+              scope: \(scope.rawValue)
+              this app: \(plan.thisApp ? "yes" : "no")
+              bundle id: \(plan.bundleIdentifier ?? "any")
+              subsystem: \(plan.subsystem ?? "any")
+              category: \(plan.category ?? "any")
+              process: \(plan.process ?? "any")
+              process id: \(plan.processIdentifier.map(String.init) ?? "any")
+              sender: \(plan.sender ?? "any")
+              message contains: \(plan.messageContains ?? "any")
+              minimum level: \(plan.minimumLevel?.rawValue ?? "any")
+              theme: \(plan.theme.rawValue)
+              metadata: \(plan.metadataMode.rawValue)
+              lookback: \(plan.lookbackSeconds)s
+              poll interval: \(plan.pollIntervalSeconds)s
+              simplify output: \(plan.simplifyOutput ? "yes" : "no")
+              persist highlights: \(plan.persistHighlights ? "yes" : "no")
+            """
+        }
+
+        static func scopeNote(
+            for filter: BriteLogFilter,
+            scope: Scope,
+        ) -> String? {
+            guard scope == .localStore, !filter.hasFocusConstraint else {
+                return nil
+            }
+
+            return """
+            Note: `local-store` with no focus filters will watch the broader macOS log stream.
+            Add `--subsystem`, `--process`, `--process-id`, `--sender`, or `--message-contains` to narrow the watch to a target app.
+            """
+        }
+
         func run() async throws {
             let resolvedBundleIdentifier = try Self.resolvedBundleIdentifier(
                 bundleIdentifier: bundleIdentifier,
@@ -311,12 +371,14 @@ extension BriteLogCommand {
                 selfWatch: selfWatch,
                 filter: liveRequest.filter,
             ) else {
-                printIntro()
+                print(Self.introText)
                 return
             }
 
-            printStartupBanner(for: plan, scope: resolvedScope)
-            printScopeNoteIfNeeded(for: liveRequest.filter, scope: resolvedScope)
+            print(Self.startupBanner(for: plan, scope: resolvedScope))
+            if let scopeNote = Self.scopeNote(for: liveRequest.filter, scope: resolvedScope) {
+                print(scopeNote)
+            }
 
             do {
                 let stream = try source.liveEntries(matching: liveRequest)
@@ -352,72 +414,6 @@ extension BriteLogCommand {
                     .localStore
             }
         }
-
-        private func printStartupBanner(
-            for plan: WatchPlan,
-            scope: Scope,
-        ) {
-            print(
-                """
-                BriteLog live watch started.
-                  source: \(plan.source.rawValue)
-                  all logs: \(plan.allLogs ? "yes" : "no")
-                  self: \(plan.selfWatch ? "yes" : "no")
-                  scope: \(scope.rawValue)
-                  this app: \(plan.thisApp ? "yes" : "no")
-                  bundle id: \(plan.bundleIdentifier ?? "any")
-                  subsystem: \(plan.subsystem ?? "any")
-                  category: \(plan.category ?? "any")
-                  process: \(plan.process ?? "any")
-                  process id: \(plan.processIdentifier.map(String.init) ?? "any")
-                  sender: \(plan.sender ?? "any")
-                  message contains: \(plan.messageContains ?? "any")
-                  minimum level: \(plan.minimumLevel?.rawValue ?? "any")
-                  theme: \(plan.theme.rawValue)
-                  metadata: \(plan.metadataMode.rawValue)
-                  lookback: \(plan.lookbackSeconds)s
-                  poll interval: \(plan.pollIntervalSeconds)s
-                  simplify output: \(plan.simplifyOutput ? "yes" : "no")
-                  persist highlights: \(plan.persistHighlights ? "yes" : "no")
-                """,
-            )
-        }
-
-        private func printIntro() {
-            print(
-                """
-                BriteLog watches another app's unified logs and reprints them with developer-friendly formatting.
-
-                Try one of these:
-                  swift run BriteLog watch --this-app
-                  swift run BriteLog watch --bundle-id com.example.MyApp
-                  swift run BriteLog watch --subsystem com.example.MyApp
-                  swift run BriteLog watch --process MyApp
-                  swift run BriteLog watch --all
-
-                Notes:
-                  - Plain `watch` does not start the full machine-wide stream by default.
-                  - Use `--all` or `--console` if you really want the broader macOS log firehose.
-                  - Use `--self` only when you want to debug BriteLog itself.
-                """,
-            )
-        }
-
-        private func printScopeNoteIfNeeded(
-            for filter: BriteLogFilter,
-            scope: Scope,
-        ) {
-            guard scope == .localStore, !filter.hasFocusConstraint else {
-                return
-            }
-
-            print(
-                """
-                Note: `local-store` with no focus filters will watch the broader macOS log stream.
-                Add `--subsystem`, `--process`, `--process-id`, `--sender`, or `--message-contains` to narrow the watch to a target app.
-                """,
-            )
-        }
     }
 
     struct Themes: ParsableCommand {
@@ -427,25 +423,28 @@ extension BriteLogCommand {
                 abstract: "List available color themes and show the saved default.",
             )
 
-            mutating func run() throws {
-                let store = BriteLogConfigurationStore()
-                let configuration = try store.load()
+            static func output(
+                configuration: BriteLogConfiguration,
+            ) -> String {
                 let selected = configuration.selectedTheme ?? .xcode
+                var lines = ["BriteLog themes"]
 
-                print("BriteLog themes")
                 for theme in Theme.allCases {
                     let marker = theme == selected ? "*" : " "
                     let suffix = theme == selected ? " (current default)" : ""
-                    print("\(marker) \(theme.rawValue) - \(theme.displayName)\(suffix)")
-                    print("  \(theme.summary)")
+                    lines.append("\(marker) \(theme.rawValue) - \(theme.displayName)\(suffix)")
+                    lines.append("  \(theme.summary)")
                 }
 
-                print(
-                    """
+                lines.append("")
+                lines.append("Use `swift run BriteLog themes select <theme>` to change the saved default.")
+                return lines.joined(separator: "\n")
+            }
 
-                    Use `swift run BriteLog themes select <theme>` to change the saved default.
-                    """,
-                )
+            mutating func run() throws {
+                let store = BriteLogConfigurationStore()
+                let configuration = try store.load()
+                print(Self.output(configuration: configuration))
             }
         }
 
@@ -490,35 +489,30 @@ extension BriteLogCommand {
             abstract: "Report which OSLogStore access paths are available in the current environment.",
         )
 
-        mutating func run() throws {
-            print(
-                """
-                BriteLog doctor
-                """,
-            )
+        static func output(
+            capabilities: [BriteLogOSLogStoreSource.Capability],
+        ) -> String {
+            var lines = ["BriteLog doctor"]
 
-            for capability in BriteLogOSLogStoreSource.capabilityReport() {
+            for capability in capabilities {
                 let status = capability.available ? "available" : "unavailable"
-                print(
-                    """
-                      \(capability.scope.rawValue): \(status)
-                        \(capability.summary)
-                    """,
-                )
+                lines.append("  \(capability.scope.rawValue): \(status)")
+                lines.append("    \(capability.summary)")
                 if let detail = capability.detail {
-                    print("    \(detail)")
+                    lines.append("    \(detail)")
                 }
             }
 
-            print(
-                """
+            lines.append("")
+            lines.append("Notes:")
+            lines.append("  - `current-process` is the narrow safe path and only sees logs emitted by the running BriteLog process.")
+            lines.append("  - `local-store` is the broader macOS path for cross-process reading, but Apple documents that it requires system permission and the `com.apple.logging.local-store` entitlement.")
+            lines.append("  - If `local-store` is unavailable here, a simple signed wrapper app may still not be enough on its own; the real distribution story depends on whether this build can carry the needed entitlement.")
+            return lines.joined(separator: "\n")
+        }
 
-                Notes:
-                  - `current-process` is the narrow safe path and only sees logs emitted by the running BriteLog process.
-                  - `local-store` is the broader macOS path for cross-process reading, but Apple documents that it requires system permission and the `com.apple.logging.local-store` entitlement.
-                  - If `local-store` is unavailable here, a simple signed wrapper app may still not be enough on its own; the real distribution story depends on whether this build can carry the needed entitlement.
-                """,
-            )
+        mutating func run() throws {
+            print(Self.output(capabilities: BriteLogOSLogStoreSource.capabilityReport()))
         }
     }
 }

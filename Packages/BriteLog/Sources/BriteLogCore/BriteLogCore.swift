@@ -236,38 +236,13 @@ public struct BriteLogRenderer: Sendable {
         return "\(timestamp) \(level) \(metadata) \(message)"
     }
 
-    private func renderMetadata(for record: BriteLogRecord) -> String {
-        switch metadataMode {
-            case .hidden:
-                return ""
-            case .compact:
-                let process = record.process ?? "unknown-process"
-                let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
-                let category = record.category.isEmpty ? "-" : record.category
-                if let sender = record.sender, !sender.isEmpty, sender != process {
-                    return "[\(process) \(sender) \(subsystem):\(category)]"
-                }
-                return "[\(process) \(subsystem):\(category)]"
-            case .full:
-                let process = record.process ?? "unknown-process"
-                let pid = record.processIdentifier.map(String.init) ?? "?"
-                let sender = record.sender ?? "-"
-                let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
-                let category = record.category.isEmpty ? "-" : record.category
-                return "[process=\(process) pid=\(pid) sender=\(sender) subsystem=\(subsystem) category=\(category)]"
-        }
-    }
-
-    private func colorize(
-        _ text: String,
+    func ansiCode(
         for level: BriteLogRecord.Level,
         isMessage: Bool = false,
-    ) -> String {
-        guard theme != .plain else {
-            return text
-        }
-
-        let code = switch (theme, level, isMessage) {
+    ) -> String? {
+        switch (theme, level, isMessage) {
+            case (.plain, _, _):
+                nil
             case (.xcode, .trace, false): "38;5;245"
             case (.xcode, .debug, false): "36"
             case (.xcode, .info, false): "32"
@@ -318,6 +293,38 @@ public struct BriteLogRenderer: Sendable {
             case (_, .fault, true): "35"
             case (_, .critical, true): "1;31"
             default: "0"
+        }
+    }
+
+    private func renderMetadata(for record: BriteLogRecord) -> String {
+        switch metadataMode {
+            case .hidden:
+                return ""
+            case .compact:
+                let process = record.process ?? "unknown-process"
+                let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
+                let category = record.category.isEmpty ? "-" : record.category
+                if let sender = record.sender, !sender.isEmpty, sender != process {
+                    return "[\(process) \(sender) \(subsystem):\(category)]"
+                }
+                return "[\(process) \(subsystem):\(category)]"
+            case .full:
+                let process = record.process ?? "unknown-process"
+                let pid = record.processIdentifier.map(String.init) ?? "?"
+                let sender = record.sender ?? "-"
+                let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
+                let category = record.category.isEmpty ? "-" : record.category
+                return "[process=\(process) pid=\(pid) sender=\(sender) subsystem=\(subsystem) category=\(category)]"
+        }
+    }
+
+    private func colorize(
+        _ text: String,
+        for level: BriteLogRecord.Level,
+        isMessage: Bool = false,
+    ) -> String {
+        guard let code = ansiCode(for: level, isMessage: isMessage) else {
+            return text
         }
 
         return "\u{001B}[\(code)m\(text)\u{001B}[0m"

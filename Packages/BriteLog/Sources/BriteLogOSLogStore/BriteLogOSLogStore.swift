@@ -42,6 +42,31 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
         }
     }
 
+    struct StoreRecord: Equatable {
+        var date: Date
+        var level: BriteLogRecord.Level
+        var subsystem: String
+        var category: String
+        var process: String?
+        var processIdentifier: Int32?
+        var sender: String?
+        var message: String
+
+        func makeBriteLogRecord() -> BriteLogRecord {
+            let trimmedMessage = message.trimmingCharacters(in: .whitespacesAndNewlines)
+            return BriteLogRecord(
+                date: date,
+                level: level,
+                subsystem: subsystem,
+                category: category,
+                process: process,
+                processIdentifier: processIdentifier,
+                sender: sender,
+                message: trimmedMessage.isEmpty ? "<empty log message>" : trimmedMessage,
+            )
+        }
+    }
+
     public var scope: BriteLogOSLogStoreScope
 
     public init(scope: BriteLogOSLogStoreScope) {
@@ -53,6 +78,48 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
             probe(scope: .currentProcess),
             probe(scope: .localStore),
         ]
+    }
+
+    static func fetchRecords(
+        from store: OSLogStore,
+        startingAt date: Date,
+    ) throws -> [StoreRecord] {
+        let position = store.position(date: date)
+        let entries = try store.getEntries(at: position)
+
+        return entries.compactMap { entry in
+            guard let entry = entry as? OSLogEntryLog else {
+                return nil
+            }
+
+            let level: BriteLogRecord.Level = switch entry.level {
+                case .undefined:
+                    .undefined
+                case .debug:
+                    .debug
+                case .info:
+                    .info
+                case .notice:
+                    .notice
+                case .error:
+                    .error
+                case .fault:
+                    .fault
+                @unknown default:
+                    .undefined
+            }
+
+            return StoreRecord(
+                date: entry.date,
+                level: level,
+                subsystem: entry.subsystem,
+                category: entry.category,
+                process: entry.process,
+                processIdentifier: entry.processIdentifier,
+                sender: entry.sender,
+                message: entry.composedMessage,
+            )
+        }
     }
 
     private static func probe(scope: BriteLogOSLogStoreScope) -> Capability {
@@ -104,8 +171,10 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
     ) throws -> AsyncThrowingStream<BriteLogRecord, Error> {
         let store = try makeStore()
         let startDate = resolveStartDate(request.start)
-        let cursor = Cursor(
-            store: store,
+        let cursor = BriteLogOSLogCursor(
+            fetchRecords: { date in
+                try Self.fetchRecords(from: store, startingAt: date)
+            },
             startDate: startDate,
             filter: request.filter,
         )
@@ -160,55 +229,28 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
     }
 }
 
-private actor Cursor {
-    let store: OSLogStore
+actor BriteLogOSLogCursor {
+    let fetchRecords: (Date) throws -> [BriteLogOSLogStoreSource.StoreRecord]
     let filter: BriteLogFilter
     var cursorDate: Date
     var trailingFingerprints = Set<BriteLogRecord.Fingerprint>()
 
     init(
-        store: OSLogStore,
+        fetchRecords: @escaping (Date) throws -> [BriteLogOSLogStoreSource.StoreRecord],
         startDate: Date,
         filter: BriteLogFilter,
     ) {
-        self.store = store
+        self.fetchRecords = fetchRecords
         self.filter = filter
         cursorDate = startDate
     }
 
     func nextBatch() throws -> [BriteLogRecord] {
-        let position = store.position(date: cursorDate)
-        let entries = try store.getEntries(at: position)
+        let entries = try fetchRecords(cursorDate)
         var records: [BriteLogRecord] = []
 
-        for case let entry as OSLogEntryLog in entries {
-            let level: BriteLogRecord.Level = switch entry.level {
-                case .undefined:
-                    .undefined
-                case .debug:
-                    .debug
-                case .info:
-                    .info
-                case .notice:
-                    .notice
-                case .error:
-                    .error
-                case .fault:
-                    .fault
-                @unknown default:
-                    .undefined
-            }
-            let message = entry.composedMessage.trimmingCharacters(in: .whitespacesAndNewlines)
-            let record = BriteLogRecord(
-                date: entry.date,
-                level: level,
-                subsystem: entry.subsystem,
-                category: entry.category,
-                process: entry.process,
-                processIdentifier: entry.processIdentifier,
-                sender: entry.sender,
-                message: message.isEmpty ? "<empty log message>" : message,
-            )
+        for entry in entries {
+            let record = entry.makeBriteLogRecord()
 
             guard filter.matches(record) else {
                 continue
