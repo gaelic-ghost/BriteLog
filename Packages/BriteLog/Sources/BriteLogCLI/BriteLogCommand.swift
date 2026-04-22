@@ -84,6 +84,9 @@ extension BriteLogCommand {
     enum Theme: String, CaseIterable, ExpressibleByArgument, Codable {
         case xcode
         case neon
+        case aurora
+        case ember
+        case ice
         case plain
 
         var coreTheme: BriteLogTheme {
@@ -92,6 +95,12 @@ extension BriteLogCommand {
                     .xcode
                 case .neon:
                     .neon
+                case .aurora:
+                    .aurora
+                case .ember:
+                    .ember
+                case .ice:
+                    .ice
                 case .plain:
                     .plain
             }

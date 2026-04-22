@@ -47,7 +47,7 @@ import Testing
 }
 
 @Test func `theme list stays stable for cli parsing`() {
-    #expect(BriteLogCommand.Theme.allCases.map(\.rawValue) == ["xcode", "neon", "plain"])
+    #expect(BriteLogCommand.Theme.allCases.map(\.rawValue) == ["xcode", "neon", "aurora", "ember", "ice", "plain"])
     #expect(BriteLogCommand.MetadataMode.allCases.map(\.rawValue) == ["full", "compact", "hidden"])
     #expect(BriteLogCommand.Level.allCases.map(\.rawValue) == ["trace", "debug", "info", "notice", "warning", "error", "fault", "critical"])
     #expect(BriteLogCommand.Source.allCases.map(\.rawValue) == ["oslog-store"])

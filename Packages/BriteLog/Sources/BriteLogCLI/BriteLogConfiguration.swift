@@ -72,6 +72,12 @@ extension BriteLogCommand.Theme {
                 "Xcode"
             case .neon:
                 "Neon"
+            case .aurora:
+                "Aurora"
+            case .ember:
+                "Ember"
+            case .ice:
+                "Ice"
             case .plain:
                 "Plain"
         }
@@ -83,6 +89,12 @@ extension BriteLogCommand.Theme {
                 "Balanced IDE-style colors for everyday debugging."
             case .neon:
                 "Higher-contrast terminal colors with a brighter cyber look."
+            case .aurora:
+                "Cool teal and pink highlights with a softer night-sky palette."
+            case .ember:
+                "Warm amber and ember tones for a hotter, warning-forward terminal look."
+            case .ice:
+                "Frosty cyan and pale-blue accents with crisp cool contrast."
             case .plain:
                 "No ANSI colors, just readable structured text."
         }

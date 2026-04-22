@@ -188,6 +188,9 @@ public struct BriteLogLiveRequest: Equatable, Sendable {
 public enum BriteLogTheme: String, CaseIterable, Sendable {
     case xcode
     case neon
+    case aurora
+    case ember
+    case ice
     case plain
 }
 
@@ -283,6 +286,33 @@ public struct BriteLogRenderer: Sendable {
             case (.neon, .fault, false): "38;5;201"
             case (.neon, .critical, false): "1;38;5;199"
             case (.neon, .undefined, false): "38;5;255"
+            case (.aurora, .trace, false): "38;5;110"
+            case (.aurora, .debug, false): "38;5;80"
+            case (.aurora, .info, false): "38;5;121"
+            case (.aurora, .notice, false): "38;5;159"
+            case (.aurora, .warning, false): "38;5;222"
+            case (.aurora, .error, false): "38;5;210"
+            case (.aurora, .fault, false): "38;5;177"
+            case (.aurora, .critical, false): "1;38;5;204"
+            case (.aurora, .undefined, false): "38;5;188"
+            case (.ember, .trace, false): "38;5;240"
+            case (.ember, .debug, false): "38;5;179"
+            case (.ember, .info, false): "38;5;150"
+            case (.ember, .notice, false): "38;5;215"
+            case (.ember, .warning, false): "38;5;220"
+            case (.ember, .error, false): "38;5;203"
+            case (.ember, .fault, false): "38;5;199"
+            case (.ember, .critical, false): "1;38;5;196"
+            case (.ember, .undefined, false): "38;5;252"
+            case (.ice, .trace, false): "38;5;153"
+            case (.ice, .debug, false): "38;5;117"
+            case (.ice, .info, false): "38;5;87"
+            case (.ice, .notice, false): "38;5;81"
+            case (.ice, .warning, false): "38;5;229"
+            case (.ice, .error, false): "38;5;211"
+            case (.ice, .fault, false): "38;5;141"
+            case (.ice, .critical, false): "1;38;5;197"
+            case (.ice, .undefined, false): "38;5;255"
             case (_, .warning, true): "33"
             case (_, .error, true): "31"
             case (_, .fault, true): "35"
