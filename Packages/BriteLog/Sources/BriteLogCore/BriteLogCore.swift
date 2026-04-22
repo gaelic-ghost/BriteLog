@@ -11,6 +11,29 @@ public struct BriteLogRecord: Equatable, Sendable {
         case fault
         case critical
         case undefined
+
+        public var rank: Int {
+            switch self {
+            case .trace:
+                0
+            case .debug:
+                1
+            case .info:
+                2
+            case .notice:
+                3
+            case .warning:
+                4
+            case .error:
+                5
+            case .fault:
+                6
+            case .critical:
+                7
+            case .undefined:
+                -1
+            }
+        }
     }
 
     public struct Fingerprint: Hashable, Sendable {
@@ -41,6 +64,7 @@ public struct BriteLogRecord: Equatable, Sendable {
     public var category: String
     public var process: String?
     public var processIdentifier: Int32?
+    public var sender: String?
     public var message: String
 
     public init(
@@ -50,6 +74,7 @@ public struct BriteLogRecord: Equatable, Sendable {
         category: String,
         process: String?,
         processIdentifier: Int32?,
+        sender: String?,
         message: String
     ) {
         self.date = date
@@ -58,6 +83,7 @@ public struct BriteLogRecord: Equatable, Sendable {
         self.category = category
         self.process = process
         self.processIdentifier = processIdentifier
+        self.sender = sender
         self.message = message
     }
 
@@ -77,17 +103,26 @@ public struct BriteLogFilter: Equatable, Sendable {
     public var category: String?
     public var process: String?
     public var processIdentifier: Int32?
+    public var sender: String?
+    public var messageContains: String?
+    public var minimumLevel: BriteLogRecord.Level?
 
     public init(
         subsystem: String? = nil,
         category: String? = nil,
         process: String? = nil,
-        processIdentifier: Int32? = nil
+        processIdentifier: Int32? = nil,
+        sender: String? = nil,
+        messageContains: String? = nil,
+        minimumLevel: BriteLogRecord.Level? = nil
     ) {
         self.subsystem = subsystem
         self.category = category
         self.process = process
         self.processIdentifier = processIdentifier
+        self.sender = sender
+        self.messageContains = messageContains
+        self.minimumLevel = minimumLevel
     }
 
     public func matches(_ record: BriteLogRecord) -> Bool {
@@ -103,7 +138,28 @@ public struct BriteLogFilter: Equatable, Sendable {
         if let processIdentifier, record.processIdentifier != processIdentifier {
             return false
         }
+        if let sender, record.sender != sender {
+            return false
+        }
+        if let messageContains {
+            let haystack = record.message.localizedCaseInsensitiveContains(messageContains)
+            if !haystack {
+                return false
+            }
+        }
+        if let minimumLevel, record.level.rank < minimumLevel.rank {
+            return false
+        }
         return true
+    }
+
+    public var hasFocusConstraint: Bool {
+        subsystem != nil
+            || category != nil
+            || process != nil
+            || processIdentifier != nil
+            || sender != nil
+            || messageContains != nil
     }
 }
 
@@ -179,13 +235,17 @@ public struct BriteLogRenderer: Sendable {
             let process = record.process ?? "unknown-process"
             let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
             let category = record.category.isEmpty ? "-" : record.category
+            if let sender = record.sender, !sender.isEmpty, sender != process {
+                return "[\(process) \(sender) \(subsystem):\(category)]"
+            }
             return "[\(process) \(subsystem):\(category)]"
         case .full:
             let process = record.process ?? "unknown-process"
             let pid = record.processIdentifier.map(String.init) ?? "?"
+            let sender = record.sender ?? "-"
             let subsystem = record.subsystem.isEmpty ? "-" : record.subsystem
             let category = record.category.isEmpty ? "-" : record.category
-            return "[process=\(process) pid=\(pid) subsystem=\(subsystem) category=\(category)]"
+            return "[process=\(process) pid=\(pid) sender=\(sender) subsystem=\(subsystem) category=\(category)]"
         }
     }
 

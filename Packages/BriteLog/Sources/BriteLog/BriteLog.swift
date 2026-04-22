@@ -24,6 +24,9 @@ extension BriteLog {
         var category: String?
         var process: String?
         var processIdentifier: Int32?
+        var sender: String?
+        var messageContains: String?
+        var minimumLevel: Level?
         var theme: Theme
         var metadataMode: MetadataMode
         var persistHighlights: Bool
@@ -39,6 +42,38 @@ extension BriteLog {
     enum Scope: String, CaseIterable, ExpressibleByArgument, Sendable {
         case currentProcess = "current-process"
         case localStore = "local-store"
+    }
+
+    enum Level: String, CaseIterable, ExpressibleByArgument, Sendable {
+        case trace
+        case debug
+        case info
+        case notice
+        case warning
+        case error
+        case fault
+        case critical
+
+        var coreLevel: BriteLogRecord.Level {
+            switch self {
+            case .trace:
+                .trace
+            case .debug:
+                .debug
+            case .info:
+                .info
+            case .notice:
+                .notice
+            case .warning:
+                .warning
+            case .error:
+                .error
+            case .fault:
+                .fault
+            case .critical:
+                .critical
+            }
+        }
     }
 
     enum Theme: String, CaseIterable, ExpressibleByArgument, Sendable {
@@ -98,6 +133,15 @@ extension BriteLog {
         @Option(name: [.customLong("process-id")], help: "Prefer log entries from this process identifier.")
         var processIdentifier: Int32?
 
+        @Option(help: "Prefer log entries from this sender binary image name.")
+        var sender: String?
+
+        @Option(name: [.customLong("message-contains")], help: "Only keep entries whose composed message contains this text.")
+        var messageContains: String?
+
+        @Option(name: [.customLong("level-at-least")], help: "Only keep entries at or above this log level.")
+        var minimumLevel: Level?
+
         @Option(help: "Choose how re-rendered output should look in Terminal or Console.")
         var theme: Theme = .xcode
 
@@ -123,6 +167,9 @@ extension BriteLog {
                 category: category,
                 process: process,
                 processIdentifier: processIdentifier,
+                sender: sender,
+                messageContains: messageContains,
+                minimumLevel: minimumLevel,
                 theme: theme,
                 metadataMode: metadata,
                 persistHighlights: persistHighlights,
@@ -137,7 +184,10 @@ extension BriteLog {
                     subsystem: subsystem,
                     category: category,
                     process: process,
-                    processIdentifier: processIdentifier
+                    processIdentifier: processIdentifier,
+                    sender: sender,
+                    messageContains: messageContains,
+                    minimumLevel: minimumLevel?.coreLevel
                 ),
                 pollInterval: .milliseconds(Int64((max(pollInterval, 0.1) * 1000).rounded()))
             )
@@ -148,6 +198,7 @@ extension BriteLog {
             let source = makeLiveSource(for: source, scope: scope)
 
             printStartupBanner(for: plan, scope: scope)
+            printScopeNoteIfNeeded(for: liveRequest.filter, scope: scope)
 
             do {
                 let stream = try source.liveEntries(matching: liveRequest)
@@ -197,12 +248,31 @@ extension BriteLog {
                   category: \(plan.category ?? "any")
                   process: \(plan.process ?? "any")
                   process id: \(plan.processIdentifier.map(String.init) ?? "any")
+                  sender: \(plan.sender ?? "any")
+                  message contains: \(plan.messageContains ?? "any")
+                  minimum level: \(plan.minimumLevel?.rawValue ?? "any")
                   theme: \(plan.theme.rawValue)
                   metadata: \(plan.metadataMode.rawValue)
                   lookback: \(plan.lookbackSeconds)s
                   poll interval: \(plan.pollIntervalSeconds)s
                   simplify output: \(plan.simplifyOutput ? "yes" : "no")
                   persist highlights: \(plan.persistHighlights ? "yes" : "no")
+                """
+            )
+        }
+
+        private func printScopeNoteIfNeeded(
+            for filter: BriteLogFilter,
+            scope: Scope
+        ) {
+            guard scope == .localStore, !filter.hasFocusConstraint else {
+                return
+            }
+
+            print(
+                """
+                Note: `local-store` with no focus filters will watch the broader macOS log stream.
+                Add `--subsystem`, `--process`, `--process-id`, `--sender`, or `--message-contains` to narrow the watch to a target app.
                 """
             )
         }

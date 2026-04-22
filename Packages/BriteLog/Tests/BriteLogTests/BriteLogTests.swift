@@ -9,6 +9,9 @@ import BriteLogCore
         category: "rendering",
         process: "DemoApp",
         processIdentifier: 42,
+        sender: "DemoApp",
+        messageContains: "warning",
+        minimumLevel: .notice,
         theme: .xcode,
         metadataMode: .compact,
         persistHighlights: true,
@@ -22,6 +25,9 @@ import BriteLogCore
     #expect(plan.category == "rendering")
     #expect(plan.process == "DemoApp")
     #expect(plan.processIdentifier == 42)
+    #expect(plan.sender == "DemoApp")
+    #expect(plan.messageContains == "warning")
+    #expect(plan.minimumLevel == .notice)
     #expect(plan.theme == .xcode)
     #expect(plan.metadataMode == .compact)
     #expect(plan.persistHighlights)
@@ -33,6 +39,7 @@ import BriteLogCore
 @Test func themeListStaysStableForCliParsing() async throws {
     #expect(BriteLog.Theme.allCases.map(\.rawValue) == ["xcode", "neon", "plain"])
     #expect(BriteLog.MetadataMode.allCases.map(\.rawValue) == ["full", "compact", "hidden"])
+    #expect(BriteLog.Level.allCases.map(\.rawValue) == ["trace", "debug", "info", "notice", "warning", "error", "fault", "critical"])
     #expect(BriteLog.Source.allCases.map(\.rawValue) == ["oslog-store"])
     #expect(BriteLog.Scope.allCases.map(\.rawValue) == ["current-process", "local-store"])
 }
@@ -45,6 +52,7 @@ import BriteLogCore
         category: "rendering",
         process: "DemoApp",
         processIdentifier: 7,
+        sender: "DemoApp",
         message: "Rendered line"
     )
 
@@ -52,6 +60,11 @@ import BriteLogCore
     #expect(BriteLogFilter(category: "rendering").matches(record))
     #expect(BriteLogFilter(process: "DemoApp").matches(record))
     #expect(BriteLogFilter(processIdentifier: 7).matches(record))
+    #expect(BriteLogFilter(sender: "DemoApp").matches(record))
+    #expect(BriteLogFilter(messageContains: "rendered").matches(record))
+    #expect(BriteLogFilter(minimumLevel: .notice).matches(record))
+    #expect(!BriteLogFilter(messageContains: "fault").matches(record))
+    #expect(!BriteLogFilter(minimumLevel: .error).matches(record))
     #expect(!BriteLogFilter(subsystem: "other").matches(record))
     #expect(!BriteLogFilter(processIdentifier: 99).matches(record))
 }
@@ -66,12 +79,20 @@ import BriteLogCore
             category: "rendering",
             process: "DemoApp",
             processIdentifier: 7,
+            sender: "DemoApp Helper",
             message: "Watch this line"
         )
     )
 
     #expect(rendered.contains("WARNING"))
-    #expect(rendered.contains("[DemoApp com.gaelic-ghost.demo:rendering]"))
+    #expect(rendered.contains("[DemoApp DemoApp Helper com.gaelic-ghost.demo:rendering]"))
     #expect(rendered.contains("Watch this line"))
     #expect(!rendered.contains("\u{001B}["))
+}
+
+@Test func focusConstraintReflectsCrossProcessTargeting() async throws {
+    #expect(!BriteLogFilter().hasFocusConstraint)
+    #expect(BriteLogFilter(subsystem: "com.gaelic-ghost.demo").hasFocusConstraint)
+    #expect(BriteLogFilter(sender: "DemoApp").hasFocusConstraint)
+    #expect(BriteLogFilter(messageContains: "fatal").hasFocusConstraint)
 }

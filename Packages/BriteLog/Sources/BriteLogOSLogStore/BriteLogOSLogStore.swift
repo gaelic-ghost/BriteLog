@@ -35,7 +35,7 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
             switch self {
             case let .localStoreUnavailable(underlying):
                 """
-                BriteLog could not open the macOS local unified log store. Apple documents that `OSLogStore.local()`
+                BriteLog could not read from the broader macOS unified log store. Apple documents that `OSLogStore.local()`
                 requires system permission and the `com.apple.logging.local-store` entitlement. Underlying error:
                 \(underlying.localizedDescription)
                 """
@@ -98,7 +98,7 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
             return try OSLogStore(scope: .currentProcessIdentifier)
         case .localStore:
             do {
-                return try OSLogStore.local()
+                return try OSLogStore(scope: .system)
             } catch {
                 throw SourceError.localStoreUnavailable(underlying: error)
             }
@@ -120,7 +120,8 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
         switch scope {
         case .currentProcess:
             do {
-                _ = try OSLogStore(scope: .currentProcessIdentifier)
+                let store = try OSLogStore(scope: .currentProcessIdentifier)
+                _ = try store.getEntries(at: store.position(date: Date()))
                 return Capability(
                     scope: scope,
                     available: true,
@@ -137,7 +138,8 @@ public struct BriteLogOSLogStoreSource: BriteLogLiveSource {
             }
         case .localStore:
             do {
-                _ = try OSLogStore.local()
+                let store = try OSLogStore(scope: .system)
+                _ = try store.getEntries(at: store.position(date: Date()))
                 return Capability(
                     scope: scope,
                     available: true,
@@ -206,6 +208,7 @@ private actor Cursor {
                 category: entry.category,
                 process: entry.process,
                 processIdentifier: entry.processIdentifier,
+                sender: entry.sender,
                 message: message.isEmpty ? "<empty log message>" : message
             )
 
