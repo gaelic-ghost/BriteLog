@@ -230,10 +230,13 @@ Once the request lands, `BriteLog.app` owns the live session boundary.
 The app should:
 
 - keep the latest `BriteLogRunRequest`
+- open or refresh the current `BriteLogViewerSession` from that run request
 - track the currently targeted bundle identifier
 - watch `NSWorkspace.didLaunchApplicationNotification`
 - watch `NSWorkspace.didTerminateApplicationNotification`
 - match events against the targeted bundle identifier
+- update the viewer session state from `waitingForLaunch` to `attached` to `ended`
+- keep a buffered record surface on that viewer session so the first viewer window can read from app-owned runtime state instead of rebuilding session ownership later
 
 Relevant Apple docs:
 

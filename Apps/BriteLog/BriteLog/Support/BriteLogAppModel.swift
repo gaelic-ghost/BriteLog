@@ -6,17 +6,30 @@ import Observation
 @MainActor
 @Observable
 final class BriteLogAppModel {
-    let storage: BriteLogAppStorage
+    struct WorkspaceApplicationSnapshot: Equatable {
+        var bundleIdentifier: String?
+        var localizedName: String?
+        var processIdentifier: pid_t
+    }
 
+    let storage: BriteLogAppStorage
     var configuration: BriteLogAppConfiguration
     var projectInstalls: [BriteLogProjectInstall]
     var currentRunRequest: BriteLogRunRequest?
-    var observedApplication: BriteLogObservedApplication?
+    var viewerSession: BriteLogViewerSession
     var lastErrorDescription: String?
+
+    private let runningApplicationsProvider: @Sendable () -> [WorkspaceApplicationSnapshot]
+    private let currentDate: @Sendable () -> Date
+    private let shouldStartSystemIntegration: Bool
 
     private var runRequestPollingTask: Task<Void, Never>?
     private var launchObserver: NSObjectProtocol?
     private var terminateObserver: NSObjectProtocol?
+
+    var observedApplication: BriteLogObservedApplication? {
+        viewerSession.observedApplication
+    }
 
     var applicationSupportPath: String {
         storage.applicationSupportDirectory.path
@@ -24,14 +37,51 @@ final class BriteLogAppModel {
 
     init(storage: BriteLogAppStorage = .init()) {
         self.storage = storage
+        runningApplicationsProvider = Self.defaultRunningApplicationsProvider
+        currentDate = Date.init
+        shouldStartSystemIntegration = true
+        let initialDate = Date()
         configuration = .default
         projectInstalls = []
         currentRunRequest = nil
-        observedApplication = nil
+        viewerSession = .idle(at: initialDate)
         lastErrorDescription = nil
         reloadFromDisk()
         configureWorkspaceNotifications()
         startRunRequestPolling()
+    }
+
+    init(
+        storage: BriteLogAppStorage,
+        runningApplicationsProvider: @escaping @Sendable () -> [WorkspaceApplicationSnapshot],
+        currentDate: @escaping @Sendable () -> Date = Date.init,
+        shouldStartSystemIntegration: Bool,
+    ) {
+        self.storage = storage
+        self.runningApplicationsProvider = runningApplicationsProvider
+        self.currentDate = currentDate
+        self.shouldStartSystemIntegration = shouldStartSystemIntegration
+        let initialDate = currentDate()
+        configuration = .default
+        projectInstalls = []
+        currentRunRequest = nil
+        viewerSession = .idle(at: initialDate)
+        lastErrorDescription = nil
+        reloadFromDisk()
+        if shouldStartSystemIntegration {
+            configureWorkspaceNotifications()
+            startRunRequestPolling()
+        }
+    }
+
+    private nonisolated static func defaultRunningApplicationsProvider() -> [WorkspaceApplicationSnapshot] {
+        NSWorkspace.shared.runningApplications.map { application in
+            WorkspaceApplicationSnapshot(
+                bundleIdentifier: application.bundleIdentifier,
+                localizedName: application.localizedName,
+                processIdentifier: application.processIdentifier,
+            )
+        }
     }
 
     func reloadFromDisk() {
@@ -117,13 +167,86 @@ final class BriteLogAppModel {
                 return
             }
 
-            currentRunRequest = request
+            applyRunRequest(request)
+            lastErrorDescription = nil
+        } catch {
+            lastErrorDescription = error.localizedDescription
+        }
+    }
+
+    func applyRunRequest(_ request: BriteLogRunRequest) {
+        currentRunRequest = request
+        do {
             try storage.saveCurrentRunRequest(request)
             refreshObservedApplicationFromWorkspace()
             lastErrorDescription = nil
         } catch {
             lastErrorDescription = error.localizedDescription
         }
+    }
+
+    func appendViewerRecords(_ records: [BriteLogRecord]) {
+        guard !records.isEmpty else {
+            return
+        }
+        guard let request = currentRunRequest else {
+            return
+        }
+
+        let existingRecords = viewerSession.request?.id == request.id ? viewerSession.records : []
+        let retainedRecords = Array((existingRecords + records).suffix(500))
+        let updatedAt = records.last?.date ?? currentDate()
+
+        viewerSession = makeViewerSession(
+            request: request,
+            observedApplication: viewerSession.observedApplication,
+            state: viewerSession.state == .idle ? .waitingForLaunch : viewerSession.state,
+            records: retainedRecords,
+            preserveTimeline: true,
+            updatedAt: updatedAt,
+        )
+    }
+
+    func applyWorkspaceApplicationEvent(
+        bundleIdentifier: String?,
+        localizedName: String?,
+        processIdentifier: pid_t,
+        phase: BriteLogObservedApplication.Phase,
+    ) {
+        guard let currentRunRequest else {
+            return
+        }
+        guard let bundleIdentifier else {
+            return
+        }
+        guard bundleIdentifier == currentRunRequest.bundleIdentifier else {
+            return
+        }
+
+        let observedApplication = BriteLogObservedApplication(
+            bundleIdentifier: currentRunRequest.bundleIdentifier,
+            localizedName: localizedName,
+            processIdentifier: processIdentifier,
+            phase: phase,
+            updatedAt: currentDate(),
+        )
+
+        let sessionState: BriteLogViewerSession.State = switch phase {
+            case .waitingForLaunch:
+                .waitingForLaunch
+            case .running:
+                .attached
+            case .terminated:
+                .ended
+        }
+
+        viewerSession = makeViewerSession(
+            request: currentRunRequest,
+            observedApplication: observedApplication,
+            state: sessionState,
+            records: viewerSession.records,
+            preserveTimeline: true,
+        )
     }
 
     private func persistConfiguration() {
@@ -145,6 +268,10 @@ final class BriteLogAppModel {
     }
 
     private func startRunRequestPolling() {
+        guard shouldStartSystemIntegration else {
+            return
+        }
+
         runRequestPollingTask = Task { [weak self] in
             while let self, !Task.isCancelled {
                 await MainActor.run {
@@ -157,6 +284,10 @@ final class BriteLogAppModel {
     }
 
     private func configureWorkspaceNotifications() {
+        guard shouldStartSystemIntegration else {
+            return
+        }
+
         let notificationCenter = NSWorkspace.shared.notificationCenter
 
         launchObserver = notificationCenter.addObserver(
@@ -172,7 +303,7 @@ final class BriteLogAppModel {
             let localizedName = application.localizedName
             let processIdentifier = application.processIdentifier
             Task { @MainActor in
-                self?.handleWorkspaceApplicationEvent(
+                self?.applyWorkspaceApplicationEvent(
                     bundleIdentifier: bundleIdentifier,
                     localizedName: localizedName,
                     processIdentifier: processIdentifier,
@@ -194,7 +325,7 @@ final class BriteLogAppModel {
             let localizedName = application.localizedName
             let processIdentifier = application.processIdentifier
             Task { @MainActor in
-                self?.handleWorkspaceApplicationEvent(
+                self?.applyWorkspaceApplicationEvent(
                     bundleIdentifier: bundleIdentifier,
                     localizedName: localizedName,
                     processIdentifier: processIdentifier,
@@ -204,55 +335,73 @@ final class BriteLogAppModel {
         }
     }
 
-    private func handleWorkspaceApplicationEvent(
-        bundleIdentifier: String?,
-        localizedName: String?,
-        processIdentifier: pid_t,
-        phase: BriteLogObservedApplication.Phase,
-    ) {
-        guard let currentRunRequest else {
-            return
-        }
-        guard let bundleIdentifier else {
-            return
-        }
-        guard bundleIdentifier == currentRunRequest.bundleIdentifier else {
-            return
-        }
-
-        observedApplication = BriteLogObservedApplication(
-            bundleIdentifier: currentRunRequest.bundleIdentifier,
-            localizedName: localizedName,
-            processIdentifier: processIdentifier,
-            phase: phase,
-            updatedAt: .now,
-        )
-    }
-
     private func refreshObservedApplicationFromWorkspace() {
         guard let currentRunRequest else {
-            observedApplication = nil
+            viewerSession = .idle(at: currentDate())
             return
         }
 
-        if let runningApplication = NSWorkspace.shared.runningApplications.first(where: {
+        if let runningApplication = runningApplicationsProvider().first(where: {
             $0.bundleIdentifier == currentRunRequest.bundleIdentifier
         }) {
-            observedApplication = BriteLogObservedApplication(
+            let observedApplication = BriteLogObservedApplication(
                 bundleIdentifier: currentRunRequest.bundleIdentifier,
                 localizedName: runningApplication.localizedName,
                 processIdentifier: runningApplication.processIdentifier,
                 phase: .running,
-                updatedAt: .now,
+                updatedAt: currentDate(),
+            )
+            viewerSession = makeViewerSession(
+                request: currentRunRequest,
+                observedApplication: observedApplication,
+                state: .attached,
+                records: viewerSession.records,
+                preserveTimeline: true,
             )
         } else {
-            observedApplication = BriteLogObservedApplication(
+            let observedApplication = BriteLogObservedApplication(
                 bundleIdentifier: currentRunRequest.bundleIdentifier,
                 localizedName: nil,
                 processIdentifier: nil,
                 phase: .waitingForLaunch,
-                updatedAt: .now,
+                updatedAt: currentDate(),
+            )
+            viewerSession = makeViewerSession(
+                request: currentRunRequest,
+                observedApplication: observedApplication,
+                state: .waitingForLaunch,
+                records: viewerSession.records,
+                preserveTimeline: true,
             )
         }
+    }
+
+    private func makeViewerSession(
+        request: BriteLogRunRequest?,
+        observedApplication: BriteLogObservedApplication?,
+        state: BriteLogViewerSession.State,
+        records: [BriteLogRecord],
+        preserveTimeline: Bool,
+        updatedAt: Date? = nil,
+    ) -> BriteLogViewerSession {
+        let now = updatedAt ?? currentDate()
+        guard let request else {
+            return .idle(at: now)
+        }
+
+        let isSameRequest = preserveTimeline && viewerSession.request?.id == request.id
+        let createdAt = isSameRequest ? viewerSession.createdAt : now
+        let retainedRecords = isSameRequest ? records : []
+        let endedAt = state == .ended ? now : nil
+
+        return BriteLogViewerSession(
+            request: request,
+            observedApplication: observedApplication,
+            records: retainedRecords,
+            state: state,
+            createdAt: createdAt,
+            updatedAt: now,
+            endedAt: endedAt,
+        )
     }
 }
