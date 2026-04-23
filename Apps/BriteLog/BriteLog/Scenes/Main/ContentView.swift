@@ -10,6 +10,9 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(BriteLogAppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
+
+    @State private var autoOpenedViewerRequestID: UUID?
 
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
@@ -19,7 +22,7 @@ struct ContentView: View {
             Text("A signed macOS host for the shared BriteLog engine")
                 .font(.headline)
 
-            Text("This app now owns app-level configuration, project integration records, and the first real viewer-session state for a targeted debug run.")
+            Text("This app now owns app-level configuration, project integration records, and a dedicated utility viewer window for a targeted debug run.")
                 .foregroundStyle(.secondary)
 
             GroupBox("Current App State") {
@@ -45,6 +48,25 @@ struct ContentView: View {
                     }
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            GroupBox("Log Viewer Window") {
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("The live log surface now lives in a dedicated floating utility window so it can stay visible while you work in Xcode or the target app.")
+                        .foregroundStyle(.secondary)
+
+                    VStack(alignment: .leading, spacing: 10) {
+                        labeledValue("Window behavior", value: "Floating utility window")
+                        labeledValue("Auto-open on run", value: model.configuration.showViewerOnLaunch ? "Enabled" : "Disabled")
+                        labeledValue("Buffered records", value: "\(model.viewerSession.records.count)")
+                        labeledValue("Keyboard shortcut", value: "Command-Shift-L")
+                    }
+
+                    Button("Open Log Viewer") {
+                        openViewerWindow()
+                    }
+                    .buttonStyle(.borderedProminent)
+                }
             }
 
             GroupBox("Current Run Request") {
@@ -145,6 +167,15 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(24)
+        .onAppear {
+            maybeAutoOpenViewer()
+        }
+        .onChange(of: model.viewerSession.request?.id) { _, _ in
+            maybeAutoOpenViewer()
+        }
+        .onChange(of: model.configuration.showViewerOnLaunch) { _, _ in
+            maybeAutoOpenViewer()
+        }
     }
 
     private func labeledValue(_ label: String, value: String) -> some View {
@@ -155,6 +186,25 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
         }
+    }
+
+    private func maybeAutoOpenViewer() {
+        guard model.configuration.showViewerOnLaunch else {
+            return
+        }
+        guard let requestID = model.viewerSession.request?.id else {
+            return
+        }
+        guard autoOpenedViewerRequestID != requestID else {
+            return
+        }
+
+        openViewerWindow()
+        autoOpenedViewerRequestID = requestID
+    }
+
+    private func openViewerWindow() {
+        openWindow(id: BriteLogWindowID.viewer)
     }
 }
 

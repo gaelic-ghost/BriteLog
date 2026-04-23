@@ -35,7 +35,7 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 open Apps/BriteLog/BriteLog.xcodeproj
 ```
 
-Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, and the first Xcode-project integration flow. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
+Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, the first Xcode-project integration flow, and the first dedicated floating log viewer window. The overall app is still early, but it now has a real utility-window viewer instead of only placeholder host UI.
 
 ## Usage
 
@@ -46,7 +46,7 @@ The current practical state is:
 - `BriteLog.app` is the entitlement-bearing surface we build, sign, package, and distribute
 - the package modules under `Packages/BriteLog` still hold most of the logging engine and command logic
 - the app now owns persisted configuration, project integration records, and the current debug-run request in Application Support
-- the app UI is currently a host shell for settings and future viewer work, not the finished day-to-day viewer experience yet
+- the app now includes a floating utility-window viewer for live targeted logs, while the rest of the product surface is still being built out
 
 So the real supported workflow today is:
 
@@ -128,6 +128,8 @@ The native app now persists its own host-level state under the user's Applicatio
 - a stored list of project integration records for installed Xcode hooks
 - the latest incoming debug-run request handed off from Xcode
 - the current in-memory viewer session state derived from that run request and matched workspace app events
+- the current live record buffer streamed from the local unified log store for the active targeted session
+- sticky viewer preferences like search text, highlight text, minimum level, and metadata layout
 
 That gives the app a real storage home before the viewer lands, instead of leaving app-owned state trapped in package-only CLI scaffolding.
 
@@ -138,9 +140,12 @@ The app now owns the first real viewer-session model instead of stopping at "a r
 - a fresh Xcode handoff opens a viewer session for that requested app target
 - the session moves through `Idle`, `Waiting For Launch`, `Attached`, and `Ended`
 - matching `NSWorkspace` launch and terminate events update the session with the real observed app name and PID
-- the session now has a live record buffer surface ready for the eventual log viewer window, even though the full on-screen viewer is still ahead
+- the app now streams matching `OSLogStore` local-store records into that session buffer using the requested bundle identifier
+- the viewer now lives in a dedicated floating utility window instead of the main app window
+- that utility window shows a theme-aware table view of live buffered records with copyable text, searchable filtering, minimum-level control, metadata layout control, and sticky highlight text
+- the main app window now acts as the integration and status surface, with controls for opening the viewer and showing whether it should auto-open on the next targeted run
 
-That means the app-side runtime boundary is finally real: the project integration path tells BriteLog what run is about to happen, and the app now has a durable place to own that live session while the first viewer UI is being built.
+That means the app-side runtime boundary is now doing real work instead of only holding placeholders: the project integration path tells BriteLog what run is about to happen, and the app now owns both the session timeline and the first live targeted record stream for that run.
 
 ## Current Integration Path
 

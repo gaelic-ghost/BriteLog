@@ -17,6 +17,14 @@ struct BriteLogApp: App {
             ContentView()
                 .environment(model)
         }
+        UtilityWindow("Log Viewer", id: BriteLogWindowID.viewer) {
+            BriteLogViewerWindow()
+                .environment(model)
+        }
+        .defaultSize(width: 1200, height: 720)
+        .windowLevel(.floating)
+        .restorationBehavior(.disabled)
+        .keyboardShortcut("l", modifiers: [.command, .shift])
         Settings {
             SettingsWindow()
                 .environment(model)

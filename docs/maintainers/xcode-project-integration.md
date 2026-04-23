@@ -236,13 +236,19 @@ The app should:
 - watch `NSWorkspace.didTerminateApplicationNotification`
 - match events against the targeted bundle identifier
 - update the viewer session state from `waitingForLaunch` to `attached` to `ended`
-- keep a buffered record surface on that viewer session so the first viewer window can read from app-owned runtime state instead of rebuilding session ownership later
+- start a targeted `OSLogStore` local-store stream from the run request submission point
+- filter that stream to the targeted bundle identifier and buffer matching records on the active viewer session
+- let the floating utility viewer window read from that app-owned record buffer so the viewer UI stays downstream of the same session model
+- keep sticky viewer-facing preferences like search text, minimum level, metadata mode, and highlight text in app-owned configuration instead of transient view state
 
 Relevant Apple docs:
 
 - <https://developer.apple.com/documentation/appkit/nsworkspace>
 - <https://developer.apple.com/documentation/appkit/nsworkspace/didlaunchapplicationnotification>
 - <https://developer.apple.com/documentation/appkit/nsworkspace/didterminateapplicationnotification>
+- <https://developer.apple.com/documentation/oslog>
+- <https://developer.apple.com/documentation/oslog/oslogstore>
+- <https://developer.apple.com/documentation/oslog/oslogposition>
 
 This gives the app a real "a new debug run is starting" signal from Xcode plus a real "the app actually launched or exited" signal from macOS.
 
@@ -254,6 +260,6 @@ The first project-integration implementation intentionally leaves several things
 - a build-plugin convenience path
 - automatic sharing or creation of missing shared schemes
 - workspace-level scheme editing beyond direct `.xcodeproj` support
-- a polished viewer that immediately starts showing local-store output for the matched launch
+- a floating utility viewer that immediately starts showing local-store output for the matched launch
 
 Those are follow-up steps after the scheme-pre-action contract proves itself.

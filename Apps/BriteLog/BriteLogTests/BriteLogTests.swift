@@ -30,7 +30,16 @@ struct BriteLogTests {
     func `app storage round trips configuration installs and current request`() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let storage = BriteLogAppStorage(applicationSupportDirectory: root)
-        let configuration = BriteLogAppConfiguration(selectedTheme: .aurora, showViewerOnLaunch: false)
+        let configuration = BriteLogAppConfiguration(
+            selectedTheme: .aurora,
+            showViewerOnLaunch: false,
+            viewerPreferences: BriteLogViewerPreferences(
+                searchText: "network",
+                highlightText: "error",
+                minimumLevel: .warning,
+                metadataMode: .full,
+            ),
+        )
         let installs = [
             BriteLogProjectInstall(
                 displayName: "Example App",
@@ -225,6 +234,150 @@ struct BriteLogTests {
 
         #expect(model.viewerSession.records == records)
         #expect(model.viewerSession.request == request)
+    }
+
+    @Test
+    func `app model streams live records into the active viewer session`() async {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let request = BriteLogRunRequest(
+            projectPath: "/tmp/ExampleApp/ExampleApp.xcodeproj",
+            schemeName: "ExampleApp",
+            targetName: "ExampleApp",
+            bundleIdentifier: "com.example.ExampleApp",
+            buildConfiguration: "Debug",
+            builtProductPath: "/tmp/DerivedData/Debug/ExampleApp.app",
+            source: .schemePreAction,
+        )
+        let streamedRecords = [
+            BriteLogRecord(
+                date: .now,
+                level: .info,
+                subsystem: "com.example.ExampleApp",
+                category: "launch",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "ExampleApp",
+                message: "Streaming boot record",
+            ),
+            BriteLogRecord(
+                date: .now.addingTimeInterval(1),
+                level: .notice,
+                subsystem: "com.example.ExampleApp",
+                category: "startup",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "ExampleApp",
+                message: "Streaming startup record",
+            ),
+        ]
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            liveRecordSource: BriteLogViewerSessionLiveRecordSource { _ in
+                AsyncThrowingStream { continuation in
+                    for record in streamedRecords {
+                        continuation.yield(record)
+                    }
+                    continuation.finish()
+                }
+            },
+            shouldStartSystemIntegration: false,
+        )
+
+        model.applyRunRequest(request)
+
+        for _ in 0..<20 where model.viewerSession.records.count < streamedRecords.count {
+            await Task.yield()
+        }
+
+        #expect(model.viewerSession.records == streamedRecords)
+        #expect(model.viewerSession.state == .waitingForLaunch)
+    }
+
+    @Test
+    func `app model does not restart live streaming when the same session attaches`() async {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let request = BriteLogRunRequest(
+            projectPath: "/tmp/ExampleApp/ExampleApp.xcodeproj",
+            schemeName: "ExampleApp",
+            targetName: "ExampleApp",
+            bundleIdentifier: "com.example.ExampleApp",
+            buildConfiguration: "Debug",
+            builtProductPath: "/tmp/DerivedData/Debug/ExampleApp.app",
+            source: .schemePreAction,
+        )
+        let invocationCounter = LockedCounter()
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            liveRecordSource: BriteLogViewerSessionLiveRecordSource { _ in
+                invocationCounter.increment()
+                return AsyncThrowingStream { continuation in
+                    continuation.finish()
+                }
+            },
+            shouldStartSystemIntegration: false,
+        )
+
+        model.applyRunRequest(request)
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        model.applyWorkspaceApplicationEvent(
+            bundleIdentifier: "com.example.ExampleApp",
+            localizedName: "Example App",
+            processIdentifier: 4242,
+            phase: .running,
+        )
+        for _ in 0..<10 {
+            await Task.yield()
+        }
+
+        #expect(invocationCounter.value == 1)
+        #expect(model.viewerSession.state == .attached)
+    }
+
+    @Test
+    func `viewer presentation filters highlights and formats rows from sticky preferences`() {
+        let records = [
+            BriteLogRecord(
+                date: Date(timeIntervalSinceReferenceDate: 100),
+                level: .info,
+                subsystem: "com.example.ExampleApp",
+                category: "launch",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "ExampleApp",
+                message: "Application booted cleanly",
+            ),
+            BriteLogRecord(
+                date: Date(timeIntervalSinceReferenceDate: 101),
+                level: .error,
+                subsystem: "com.example.ExampleApp",
+                category: "network",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "Networking",
+                message: "Network request failed hard",
+            ),
+        ]
+        let preferences = BriteLogViewerPreferences(
+            searchText: "network",
+            highlightText: "failed",
+            minimumLevel: .warning,
+            metadataMode: .full,
+        )
+
+        let rows = BriteLogViewerPresentation.rows(from: records, preferences: preferences)
+
+        #expect(rows.count == 1)
+        #expect(rows[0].record.message == "Network request failed hard")
+        #expect(rows[0].isHighlighted)
+        #expect(rows[0].sourceText == "com.example.ExampleApp")
+        #expect(rows[0].detailsText?.contains("network") == true)
     }
 
     @Test
@@ -451,6 +604,23 @@ struct BriteLogTests {
         await #expect(throws: Error.self) {
             try await coordinator.closeXcodeIfRunning()
         }
+    }
+}
+
+private final class LockedCounter: @unchecked Sendable {
+    private let lock = NSLock()
+    private var storage = 0
+
+    var value: Int {
+        lock.lock()
+        defer { lock.unlock() }
+        return storage
+    }
+
+    func increment() {
+        lock.lock()
+        storage += 1
+        lock.unlock()
     }
 }
 
