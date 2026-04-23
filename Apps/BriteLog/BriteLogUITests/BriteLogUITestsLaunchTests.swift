@@ -1,31 +1,18 @@
-//
-//  BriteLogUITestsLaunchTests.swift
-//  BriteLogUITests
-//
-//  Created by Gale Williams on 4/22/26.
-//
-
 import XCTest
 
 final class BriteLogUITestsLaunchTests: XCTestCase {
-
     override class var runsForEachTargetApplicationUIConfiguration: Bool {
         true
     }
 
-    override func setUpWithError() throws {
+    override func setUpWithError() {
         continueAfterFailure = false
     }
 
     @MainActor
-    func testLaunch() throws {
+    func testLaunch() {
         let app = XCUIApplication()
         app.launch()
-
-        // Insert steps here to perform after app launch but before taking a screenshot,
-        // such as logging into a test account or navigating somewhere in the app
-        // XCUIAutomation Documentation
-        // https://developer.apple.com/documentation/xcuiautomation
 
         let attachment = XCTAttachment(screenshot: app.screenshot())
         attachment.name = "Launch Screen"
