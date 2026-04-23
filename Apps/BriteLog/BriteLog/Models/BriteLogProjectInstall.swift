@@ -3,7 +3,7 @@ import Foundation
 struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
     enum IntegrationKind: String, Codable, CaseIterable, Identifiable {
         case buildPlugin
-        case schemeAction
+        case schemePreAction
 
         var id: Self { self }
 
@@ -11,8 +11,8 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
             switch self {
                 case .buildPlugin:
                     "Build Plugin"
-                case .schemeAction:
-                    "Scheme Action"
+                case .schemePreAction:
+                    "Scheme Pre-Action"
             }
         }
     }
@@ -21,6 +21,10 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
     var displayName: String
     var projectPath: String
     var schemeName: String?
+    var bundleIdentifier: String?
+    var schemePath: String?
+    var schemeFingerprint: String?
+    var backupPath: String?
     var integrationKind: IntegrationKind
     var notes: String?
     var createdAt: Date
@@ -31,6 +35,10 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
         displayName: String,
         projectPath: String,
         schemeName: String? = nil,
+        bundleIdentifier: String? = nil,
+        schemePath: String? = nil,
+        schemeFingerprint: String? = nil,
+        backupPath: String? = nil,
         integrationKind: IntegrationKind,
         notes: String? = nil,
         createdAt: Date = .now,
@@ -40,6 +48,10 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
         self.displayName = displayName
         self.projectPath = projectPath
         self.schemeName = schemeName
+        self.bundleIdentifier = bundleIdentifier
+        self.schemePath = schemePath
+        self.schemeFingerprint = schemeFingerprint
+        self.backupPath = backupPath
         self.integrationKind = integrationKind
         self.notes = notes
         self.createdAt = createdAt

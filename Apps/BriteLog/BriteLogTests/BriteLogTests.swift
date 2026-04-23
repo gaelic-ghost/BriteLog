@@ -5,6 +5,12 @@ import Testing
 
 @MainActor
 struct BriteLogTests {
+    private let resolvedAppTarget = BriteLogXcodeResolvedAppTarget(
+        schemeName: "ExampleApp",
+        targetName: "ExampleApp",
+        bundleIdentifier: "com.example.ExampleApp",
+    )
+
     @Test
     func `app entry point compiles`() {
         _ = BriteLogApp.self
@@ -17,10 +23,11 @@ struct BriteLogTests {
 
         #expect(try storage.loadConfiguration() == .default)
         #expect(try storage.loadProjectInstalls().isEmpty)
+        #expect(try storage.loadCurrentRunRequest() == nil)
     }
 
     @Test
-    func `app storage round trips configuration and project installs`() throws {
+    func `app storage round trips configuration installs and current request`() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let storage = BriteLogAppStorage(applicationSupportDirectory: root)
         let configuration = BriteLogAppConfiguration(selectedTheme: .aurora, showViewerOnLaunch: false)
@@ -29,15 +36,378 @@ struct BriteLogTests {
                 displayName: "Example App",
                 projectPath: "/tmp/ExampleApp",
                 schemeName: "ExampleApp",
+                bundleIdentifier: "com.example.ExampleApp",
+                schemePath: "/tmp/ExampleApp/ExampleApp.xcodeproj/xcshareddata/xcschemes/ExampleApp.xcscheme",
+                schemeFingerprint: "abc123",
+                backupPath: "/tmp/BriteLogBackups/ExampleApp.xcscheme",
                 integrationKind: .buildPlugin,
                 notes: "Created for test coverage.",
             ),
         ]
+        let currentRunRequest = BriteLogRunRequest(
+            projectPath: "/tmp/ExampleApp/ExampleApp.xcodeproj",
+            schemeName: "ExampleApp",
+            targetName: "ExampleApp",
+            bundleIdentifier: "com.example.ExampleApp",
+            buildConfiguration: "Debug",
+            builtProductPath: "/tmp/DerivedData/Debug/ExampleApp.app",
+            source: .schemePreAction,
+        )
 
         try storage.saveConfiguration(configuration)
         try storage.saveProjectInstalls(installs)
+        try storage.saveCurrentRunRequest(currentRunRequest)
 
         #expect(try storage.loadConfiguration() == configuration)
         #expect(try storage.loadProjectInstalls() == installs)
+        #expect(try storage.loadCurrentRunRequest() == currentRunRequest)
     }
+
+    @Test
+    func `incoming run request env file is consumed into a structured request`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        try FileManager.default.createDirectory(at: root, withIntermediateDirectories: true)
+
+        let requestID = try #require(UUID(uuidString: "123E4567-E89B-12D3-A456-426614174000"))
+        let requestContents = """
+        requestID=\(requestID.uuidString)
+        submittedAt=2026-04-22T23:15:04Z
+        source=schemePreAction
+        projectPath_b64=\(Data("/tmp/ExampleApp/ExampleApp.xcodeproj".utf8).base64EncodedString())
+        schemeName_b64=\(Data("ExampleApp".utf8).base64EncodedString())
+        targetName_b64=\(Data("ExampleApp".utf8).base64EncodedString())
+        bundleIdentifier_b64=\(Data("com.example.ExampleApp".utf8).base64EncodedString())
+        buildConfiguration_b64=\(Data("Debug".utf8).base64EncodedString())
+        builtProductPath_b64=\(Data("/tmp/DerivedData/Debug/ExampleApp.app".utf8).base64EncodedString())
+        """
+
+        let requestData = try #require(requestContents.data(using: .utf8))
+        try requestData.write(to: storage.incomingRunRequestURL)
+        let request = try storage.consumeIncomingRunRequest()
+
+        #expect(request?.id == requestID)
+        #expect(request?.schemeName == "ExampleApp")
+        #expect(request?.bundleIdentifier == "com.example.ExampleApp")
+        #expect(request?.source == .schemePreAction)
+        #expect(FileManager.default.fileExists(atPath: storage.incomingRunRequestURL.path) == false)
+    }
+
+    @Test
+    func `scheme pre action installer reports not installed before mutation`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let projectURL = root.appendingPathComponent("ExampleApp.xcodeproj", isDirectory: true)
+        let schemeDirectory = projectURL
+            .appendingPathComponent("xcshareddata", isDirectory: true)
+            .appendingPathComponent("xcschemes", isDirectory: true)
+        let schemeURL = schemeDirectory.appendingPathComponent("ExampleApp.xcscheme")
+        try FileManager.default.createDirectory(at: schemeDirectory, withIntermediateDirectories: true)
+
+        try makeBaseSchemeXML().write(to: schemeURL, atomically: true, encoding: .utf8)
+
+        let installer = BriteLogSchemePreActionInstaller(
+            inspector: BriteLogXcodeProjectInspector(),
+            backupRootDirectory: root.appendingPathComponent("Backups", isDirectory: true),
+            isXcodeRunning: { false },
+        )
+
+        let inspection = try installer.inspect(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+        )
+
+        #expect(inspection.state == .notInstalled)
+        #expect(inspection.canMutate)
+        #expect(inspection.warnings.isEmpty)
+    }
+
+    @Test
+    func `scheme pre action installer writes backup and reports installed state`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let projectURL = root.appendingPathComponent("ExampleApp.xcodeproj", isDirectory: true)
+        let schemeDirectory = projectURL
+            .appendingPathComponent("xcshareddata", isDirectory: true)
+            .appendingPathComponent("xcschemes", isDirectory: true)
+        let schemeURL = schemeDirectory.appendingPathComponent("ExampleApp.xcscheme")
+        let backupDirectory = root.appendingPathComponent("Backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: schemeDirectory, withIntermediateDirectories: true)
+        try makeBaseSchemeXML().write(to: schemeURL, atomically: true, encoding: .utf8)
+
+        let installer = BriteLogSchemePreActionInstaller(
+            inspector: BriteLogXcodeProjectInspector(),
+            backupRootDirectory: backupDirectory,
+            isXcodeRunning: { false },
+        )
+        let initialInspection = try installer.inspect(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+        )
+
+        let result = try installer.install(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+            expectedFingerprint: initialInspection.fingerprint,
+        )
+
+        let installedXML = try String(contentsOf: result.schemeURL, encoding: .utf8)
+        let backupXML = try String(contentsOf: result.backupURL, encoding: .utf8)
+
+        #expect(result.kind == .installed)
+        #expect(result.inspection.state == .installed)
+        #expect(installedXML.contains("Use BriteLog For Debug Runs"))
+        #expect(installedXML.contains("incoming-run-request.env"))
+        #expect(installedXML.contains("schemePreAction"))
+        #expect(installedXML.contains("com.galewilliams.BriteLog"))
+        #expect(backupXML.contains("BuildableProductRunnable"))
+    }
+
+    @Test
+    func `scheme pre action installer removes only the managed pre action`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let projectURL = root.appendingPathComponent("ExampleApp.xcodeproj", isDirectory: true)
+        let schemeDirectory = projectURL
+            .appendingPathComponent("xcshareddata", isDirectory: true)
+            .appendingPathComponent("xcschemes", isDirectory: true)
+        let schemeURL = schemeDirectory.appendingPathComponent("ExampleApp.xcscheme")
+        let backupDirectory = root.appendingPathComponent("Backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: schemeDirectory, withIntermediateDirectories: true)
+        try makeSchemeXMLWithCustomPreAction().write(to: schemeURL, atomically: true, encoding: .utf8)
+
+        let installer = BriteLogSchemePreActionInstaller(
+            inspector: BriteLogXcodeProjectInspector(),
+            backupRootDirectory: backupDirectory,
+            isXcodeRunning: { false },
+        )
+        let installResult = try installer.install(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+        )
+        let removeResult = try installer.remove(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+            expectedFingerprint: installResult.inspection.fingerprint,
+        )
+
+        let finalXML = try String(contentsOf: schemeURL, encoding: .utf8)
+
+        #expect(removeResult.kind == .removed)
+        #expect(removeResult.inspection.state == .notInstalled)
+        #expect(finalXML.contains("Keep Existing Action"))
+        #expect(finalXML.contains("Use BriteLog For Debug Runs") == false)
+    }
+
+    @Test
+    func `scheme pre action installer refuses stale writes`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let projectURL = root.appendingPathComponent("ExampleApp.xcodeproj", isDirectory: true)
+        let schemeDirectory = projectURL
+            .appendingPathComponent("xcshareddata", isDirectory: true)
+            .appendingPathComponent("xcschemes", isDirectory: true)
+        let schemeURL = schemeDirectory.appendingPathComponent("ExampleApp.xcscheme")
+        let backupDirectory = root.appendingPathComponent("Backups", isDirectory: true)
+        try FileManager.default.createDirectory(at: schemeDirectory, withIntermediateDirectories: true)
+        try makeBaseSchemeXML().write(to: schemeURL, atomically: true, encoding: .utf8)
+
+        let installer = BriteLogSchemePreActionInstaller(
+            inspector: BriteLogXcodeProjectInspector(),
+            backupRootDirectory: backupDirectory,
+            isXcodeRunning: { false },
+        )
+        let initialInspection = try installer.inspect(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+        )
+
+        try makeSchemeXMLWithCustomPreAction().write(to: schemeURL, atomically: true, encoding: .utf8)
+
+        #expect(throws: Error.self) {
+            try installer.install(
+                projectURL: projectURL,
+                appTarget: resolvedAppTarget,
+                expectedFingerprint: initialInspection.fingerprint,
+            )
+        }
+    }
+
+    @Test
+    func `scheme pre action inspection blocks mutation while Xcode is running`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let projectURL = root.appendingPathComponent("ExampleApp.xcodeproj", isDirectory: true)
+        let schemeDirectory = projectURL
+            .appendingPathComponent("xcshareddata", isDirectory: true)
+            .appendingPathComponent("xcschemes", isDirectory: true)
+        let schemeURL = schemeDirectory.appendingPathComponent("ExampleApp.xcscheme")
+        try FileManager.default.createDirectory(at: schemeDirectory, withIntermediateDirectories: true)
+        try makeBaseSchemeXML().write(to: schemeURL, atomically: true, encoding: .utf8)
+
+        let installer = BriteLogSchemePreActionInstaller(
+            inspector: BriteLogXcodeProjectInspector(),
+            backupRootDirectory: root.appendingPathComponent("Backups", isDirectory: true),
+            isXcodeRunning: { true },
+        )
+
+        let inspection = try installer.inspect(
+            projectURL: projectURL,
+            appTarget: resolvedAppTarget,
+        )
+
+        #expect(inspection.canMutate == false)
+        #expect(inspection.mutationReadiness == .blockedByRunningXcode)
+        #expect(inspection.warnings.isEmpty == false)
+    }
+
+    @Test
+    func `xcode lifecycle coordinator closes and relaunches xcode`() async throws {
+        let xcodeURL = URL(fileURLWithPath: "/Applications/Xcode.app", isDirectory: true)
+        let state = TestApplicationState()
+        let coordinator = BriteLogXcodeLifecycleCoordinator(
+            runningApplications: {
+                [
+                    .init(
+                        bundleIdentifier: BriteLogXcodeLifecycleCoordinator.xcodeBundleIdentifier,
+                        bundleURL: xcodeURL,
+                        isTerminated: { state.isTerminated },
+                        terminate: {
+                            state.markTerminated()
+                            return true
+                        },
+                    ),
+                ]
+            },
+            resolveApplicationURL: { _ in xcodeURL },
+            launchApplication: { reopenedURL in
+                state.recordReopenedURL(reopenedURL)
+            },
+            sleep: { _ in },
+        )
+
+        let relaunchURL = try await coordinator.closeXcodeIfRunning()
+        try await coordinator.reopenXcodeIfNeeded(at: relaunchURL)
+
+        #expect(state.didTerminate)
+        #expect(relaunchURL == xcodeURL)
+        #expect(state.reopenedURL == xcodeURL)
+    }
+
+    @Test
+    func `xcode lifecycle coordinator times out if xcode does not exit`() async {
+        let xcodeURL = URL(fileURLWithPath: "/Applications/Xcode.app", isDirectory: true)
+        let state = TestApplicationState()
+        let coordinator = BriteLogXcodeLifecycleCoordinator(
+            runningApplications: {
+                [
+                    .init(
+                        bundleIdentifier: BriteLogXcodeLifecycleCoordinator.xcodeBundleIdentifier,
+                        bundleURL: xcodeURL,
+                        isTerminated: { state.isTerminated },
+                        terminate: {
+                            state.recordTerminateRequest()
+                            return true
+                        },
+                    ),
+                ]
+            },
+            resolveApplicationURL: { _ in xcodeURL },
+            launchApplication: { _ in },
+            sleep: { _ in },
+            terminationTimeout: .zero,
+            pollInterval: .zero,
+        )
+
+        await #expect(throws: Error.self) {
+            try await coordinator.closeXcodeIfRunning()
+        }
+    }
+}
+
+private final class TestApplicationState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _isTerminated = false
+    private var _didTerminate = false
+    private var _reopenedURL: URL?
+
+    var isTerminated: Bool {
+        lock.withLock { _isTerminated }
+    }
+
+    var didTerminate: Bool {
+        lock.withLock { _didTerminate }
+    }
+
+    var reopenedURL: URL? {
+        lock.withLock { _reopenedURL }
+    }
+
+    func markTerminated() {
+        lock.withLock {
+            _isTerminated = true
+            _didTerminate = true
+        }
+    }
+
+    func recordTerminateRequest() {
+        lock.withLock {
+            _didTerminate = true
+        }
+    }
+
+    func recordReopenedURL(_ url: URL) {
+        lock.withLock {
+            _reopenedURL = url
+        }
+    }
+}
+
+private func makeBaseSchemeXML() -> String {
+    """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Scheme LastUpgradeVersion="2620" version="1.7">
+      <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+        <BuildActionEntries>
+          <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="ABC123" BuildableName="ExampleApp.app" BlueprintName="ExampleApp" ReferencedContainer="container:ExampleApp.xcodeproj">
+            </BuildableReference>
+          </BuildActionEntry>
+        </BuildActionEntries>
+      </BuildAction>
+      <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB">
+        <BuildableProductRunnable runnableDebuggingMode="0">
+          <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="ABC123" BuildableName="ExampleApp.app" BlueprintName="ExampleApp" ReferencedContainer="container:ExampleApp.xcodeproj">
+          </BuildableReference>
+        </BuildableProductRunnable>
+      </LaunchAction>
+    </Scheme>
+    """
+}
+
+private func makeSchemeXMLWithCustomPreAction() -> String {
+    """
+    <?xml version="1.0" encoding="UTF-8"?>
+    <Scheme LastUpgradeVersion="2620" version="1.7">
+      <BuildAction parallelizeBuildables="YES" buildImplicitDependencies="YES">
+        <BuildActionEntries>
+          <BuildActionEntry buildForTesting="YES" buildForRunning="YES" buildForProfiling="YES" buildForArchiving="YES" buildForAnalyzing="YES">
+            <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="ABC123" BuildableName="ExampleApp.app" BlueprintName="ExampleApp" ReferencedContainer="container:ExampleApp.xcodeproj">
+            </BuildableReference>
+          </BuildActionEntry>
+        </BuildActionEntries>
+      </BuildAction>
+      <LaunchAction buildConfiguration="Debug" selectedDebuggerIdentifier="Xcode.DebuggerFoundation.Debugger.LLDB" selectedLauncherIdentifier="Xcode.DebuggerFoundation.Launcher.LLDB">
+        <PreActions>
+          <ExecutionAction ActionType="Xcode.IDEStandardExecutionActionsCore.ExecutionActionType.ShellScriptAction">
+            <ActionContent title="Keep Existing Action" scriptText="echo keep" shellToInvoke="/bin/sh">
+              <EnvironmentBuildable>
+                <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="ABC123" BuildableName="ExampleApp.app" BlueprintName="ExampleApp" ReferencedContainer="container:ExampleApp.xcodeproj">
+                </BuildableReference>
+              </EnvironmentBuildable>
+            </ActionContent>
+          </ExecutionAction>
+        </PreActions>
+        <BuildableProductRunnable runnableDebuggingMode="0">
+          <BuildableReference BuildableIdentifier="primary" BlueprintIdentifier="ABC123" BuildableName="ExampleApp.app" BlueprintName="ExampleApp" ReferencedContainer="container:ExampleApp.xcodeproj">
+          </BuildableReference>
+        </BuildableProductRunnable>
+      </LaunchAction>
+    </Scheme>
+    """
 }
