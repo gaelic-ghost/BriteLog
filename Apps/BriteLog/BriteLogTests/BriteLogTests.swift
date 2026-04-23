@@ -30,7 +30,16 @@ struct BriteLogTests {
     func `app storage round trips configuration installs and current request`() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let storage = BriteLogAppStorage(applicationSupportDirectory: root)
-        let configuration = BriteLogAppConfiguration(selectedTheme: .aurora, showViewerOnLaunch: false)
+        let configuration = BriteLogAppConfiguration(
+            selectedTheme: .aurora,
+            showViewerOnLaunch: false,
+            viewerPreferences: BriteLogViewerPreferences(
+                searchText: "network",
+                highlightText: "error",
+                minimumLevel: .warning,
+                metadataMode: .full,
+            ),
+        )
         let installs = [
             BriteLogProjectInstall(
                 displayName: "Example App",
@@ -329,6 +338,46 @@ struct BriteLogTests {
 
         #expect(invocationCounter.value == 1)
         #expect(model.viewerSession.state == .attached)
+    }
+
+    @Test
+    func `viewer presentation filters highlights and formats rows from sticky preferences`() {
+        let records = [
+            BriteLogRecord(
+                date: Date(timeIntervalSinceReferenceDate: 100),
+                level: .info,
+                subsystem: "com.example.ExampleApp",
+                category: "launch",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "ExampleApp",
+                message: "Application booted cleanly",
+            ),
+            BriteLogRecord(
+                date: Date(timeIntervalSinceReferenceDate: 101),
+                level: .error,
+                subsystem: "com.example.ExampleApp",
+                category: "network",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "Networking",
+                message: "Network request failed hard",
+            ),
+        ]
+        let preferences = BriteLogViewerPreferences(
+            searchText: "network",
+            highlightText: "failed",
+            minimumLevel: .warning,
+            metadataMode: .full,
+        )
+
+        let rows = BriteLogViewerPresentation.rows(from: records, preferences: preferences)
+
+        #expect(rows.count == 1)
+        #expect(rows[0].record.message == "Network request failed hard")
+        #expect(rows[0].isHighlighted)
+        #expect(rows[0].sourceText == "com.example.ExampleApp")
+        #expect(rows[0].detailsText?.contains("network") == true)
     }
 
     @Test

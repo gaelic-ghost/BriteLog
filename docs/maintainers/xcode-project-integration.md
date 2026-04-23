@@ -239,6 +239,7 @@ The app should:
 - start a targeted `OSLogStore` local-store stream from the run request submission point
 - filter that stream to the targeted bundle identifier and buffer matching records on the active viewer session
 - let the app window read from that app-owned record buffer so the first viewer UI stays downstream of the same session model
+- keep sticky viewer-facing preferences like search text, minimum level, metadata mode, and highlight text in app-owned configuration instead of transient view state
 
 Relevant Apple docs:
 

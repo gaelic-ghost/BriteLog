@@ -1,7 +1,7 @@
 import Foundation
 
 public struct BriteLogRecord: Equatable, Sendable {
-    public enum Level: String, Equatable, Sendable {
+    public enum Level: String, Codable, Equatable, Sendable {
         case trace
         case debug
         case info
@@ -228,7 +228,7 @@ public enum BriteLogTheme: String, CaseIterable, Codable, Equatable, Sendable {
     }
 }
 
-public enum BriteLogMetadataMode: String, CaseIterable, Sendable {
+public enum BriteLogMetadataMode: String, CaseIterable, Codable, Sendable {
     case full
     case compact
     case hidden

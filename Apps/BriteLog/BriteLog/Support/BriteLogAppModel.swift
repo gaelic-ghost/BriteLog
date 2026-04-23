@@ -34,6 +34,10 @@ final class BriteLogAppModel {
         viewerSession.observedApplication
     }
 
+    var viewerPreferences: BriteLogViewerPreferences {
+        configuration.viewerPreferences
+    }
+
     var applicationSupportPath: String {
         storage.applicationSupportDirectory.path
     }
@@ -111,6 +115,26 @@ final class BriteLogAppModel {
 
     func setShowViewerOnLaunch(_ value: Bool) {
         configuration.showViewerOnLaunch = value
+        persistConfiguration()
+    }
+
+    func setViewerSearchText(_ value: String) {
+        configuration.viewerPreferences.searchText = value
+        persistConfiguration()
+    }
+
+    func setViewerHighlightText(_ value: String) {
+        configuration.viewerPreferences.highlightText = value
+        persistConfiguration()
+    }
+
+    func setViewerMinimumLevel(_ value: BriteLogRecord.Level?) {
+        configuration.viewerPreferences.minimumLevel = value
+        persistConfiguration()
+    }
+
+    func setViewerMetadataMode(_ value: BriteLogMetadataMode) {
+        configuration.viewerPreferences.metadataMode = value
         persistConfiguration()
     }
 
