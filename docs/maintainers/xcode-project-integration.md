@@ -238,7 +238,7 @@ The app should:
 - update the viewer session state from `waitingForLaunch` to `attached` to `ended`
 - start a targeted `OSLogStore` local-store stream from the run request submission point
 - filter that stream to the targeted bundle identifier and buffer matching records on the active viewer session
-- let the app window read from that app-owned record buffer so the first viewer UI stays downstream of the same session model
+- let the floating utility viewer window read from that app-owned record buffer so the viewer UI stays downstream of the same session model
 - keep sticky viewer-facing preferences like search text, minimum level, metadata mode, and highlight text in app-owned configuration instead of transient view state
 
 Relevant Apple docs:
@@ -260,6 +260,6 @@ The first project-integration implementation intentionally leaves several things
 - a build-plugin convenience path
 - automatic sharing or creation of missing shared schemes
 - workspace-level scheme editing beyond direct `.xcodeproj` support
-- a polished viewer that immediately starts showing local-store output for the matched launch
+- a floating utility viewer that immediately starts showing local-store output for the matched launch
 
 Those are follow-up steps after the scheme-pre-action contract proves itself.

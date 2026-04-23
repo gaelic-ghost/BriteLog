@@ -31,7 +31,7 @@ Use this section as a concise rollup of milestone names and statuses, not as a s
 
 - Milestone 0: Signed App Foundation - In Progress
 - Milestone 1: Project Integration - In Progress
-- Milestone 2: First Viewer - Planned
+- Milestone 2: First Viewer - In Progress
 
 ## Milestone 0: Signed App Foundation
 
@@ -89,7 +89,7 @@ In Progress
 
 ### Status
 
-Planned
+In Progress
 
 ### Scope
 
@@ -101,7 +101,7 @@ Planned
 - [x] Build a viewer model that owns the current watch session, live records, filters, and presentation state.
 - [x] Build the first app-owned viewer-session foundation for current run request, observed app state, session status, and buffered records.
 - [x] Stream targeted local-store records into the active app-owned viewer session and surface a small live record list in the app window.
-- [ ] Add a first log viewer window in the app for targeted live output.
+- [x] Add a first log viewer window in the app for targeted live output.
 - [x] Surface saved theme selection and a small set of viewer preferences from app storage.
 - [ ] Add at least one persistent highlighting or filtering primitive that survives app relaunch.
 - [ ] Validate the first viewer against a real Xcode debug workflow and tighten the rough edges it exposes.
@@ -130,3 +130,4 @@ Planned
 - Added the first app-owned viewer-session model so the app now tracks idle, waiting, attached, and ended run state with a buffered record surface ahead of the full viewer UI.
 - Wired the app-owned viewer session to real targeted `OSLogStore` local-store streaming and surfaced the first minimal live record list in the main app window.
 - Turned the raw live record list into a first usable viewer surface with a themed table, toolbar search, sticky minimum-level and metadata controls, and persistent highlight text.
+- Moved the live viewer into a dedicated floating utility window so the main app can stay focused on integration and session status while the log surface remains front-and-visible during debugging.

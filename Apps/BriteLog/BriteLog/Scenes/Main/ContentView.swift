@@ -10,54 +10,11 @@ import SwiftUI
 
 struct ContentView: View {
     @Environment(BriteLogAppModel.self) private var model
+    @Environment(\.openWindow) private var openWindow
 
-    private var viewerSearchTextBinding: Binding<String> {
-        Binding(
-            get: { model.viewerPreferences.searchText },
-            set: { model.setViewerSearchText($0) },
-        )
-    }
-
-    private var viewerHighlightTextBinding: Binding<String> {
-        Binding(
-            get: { model.viewerPreferences.highlightText },
-            set: { model.setViewerHighlightText($0) },
-        )
-    }
-
-    private var viewerMinimumLevelBinding: Binding<BriteLogRecord.Level?> {
-        Binding(
-            get: { model.viewerPreferences.minimumLevel },
-            set: { model.setViewerMinimumLevel($0) },
-        )
-    }
-
-    private var viewerMetadataModeBinding: Binding<BriteLogMetadataMode> {
-        Binding(
-            get: { model.viewerPreferences.metadataMode },
-            set: { model.setViewerMetadataMode($0) },
-        )
-    }
-
-    private var viewerLevelOptions: [BriteLogRecord.Level] {
-        [
-            .trace,
-            .debug,
-            .info,
-            .notice,
-            .warning,
-            .error,
-            .fault,
-            .critical,
-        ]
-    }
+    @State private var autoOpenedViewerRequestID: UUID?
 
     var body: some View {
-        let viewerRows = BriteLogViewerPresentation.rows(
-            from: model.viewerSession.records,
-            preferences: model.viewerPreferences,
-        )
-
         VStack(alignment: .leading, spacing: 16) {
             Label("BriteLog", systemImage: "text.badge.star")
                 .font(.title2.weight(.semibold))
@@ -65,7 +22,7 @@ struct ContentView: View {
             Text("A signed macOS host for the shared BriteLog engine")
                 .font(.headline)
 
-            Text("This app now owns app-level configuration, project integration records, and a real live viewer surface for a targeted debug run.")
+            Text("This app now owns app-level configuration, project integration records, and a dedicated utility viewer window for a targeted debug run.")
                 .foregroundStyle(.secondary)
 
             GroupBox("Current App State") {
@@ -93,81 +50,22 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            GroupBox("Viewer") {
+            GroupBox("Log Viewer Window") {
                 VStack(alignment: .leading, spacing: 12) {
-                    viewerControls
+                    Text("The live log surface now lives in a dedicated floating utility window so it can stay visible while you work in Xcode or the target app.")
+                        .foregroundStyle(.secondary)
 
-                    if model.viewerSession.records.isEmpty {
-                        Text("No live records have been buffered for the current viewer session yet. Once the targeted app emits unified log entries for its bundle identifier, they will appear here.")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else if viewerRows.isEmpty {
-                        Text("The current viewer filters hide all buffered records. Adjust the search text or minimum level to widen the visible log surface.")
-                            .foregroundStyle(.secondary)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    } else {
-                        Table(viewerRows) {
-                            TableColumn("Time") { row in
-                                Text(row.timestampText)
-                                    .font(.caption.monospaced())
-                                    .foregroundStyle(.secondary)
-                            }
-                            .width(min: 88, ideal: 96, max: 112)
-
-                            TableColumn("Level") { row in
-                                Text(row.record.level.rawValue.uppercased())
-                                    .font(.caption.weight(.semibold))
-                                    .foregroundStyle(
-                                        BriteLogViewerPresentation.levelColor(
-                                            for: row.record.level,
-                                            theme: model.configuration.selectedTheme,
-                                        ),
-                                    )
-                            }
-                            .width(min: 70, ideal: 82, max: 94)
-
-                            TableColumn("Source") { row in
-                                VStack(alignment: .leading, spacing: 2) {
-                                    if !row.sourceText.isEmpty {
-                                        Text(row.sourceText)
-                                            .font(.caption)
-                                    } else {
-                                        Text("Hidden")
-                                            .font(.caption)
-                                            .foregroundStyle(.secondary)
-                                    }
-
-                                    if let detailsText = row.detailsText {
-                                        Text(detailsText)
-                                            .font(.caption2)
-                                            .foregroundStyle(.secondary)
-                                    }
-                                }
-                            }
-                            .width(min: 180, ideal: 240, max: 340)
-
-                            TableColumn("Message") { row in
-                                Text(row.record.message)
-                                    .font(.body.monospaced())
-                                    .textSelection(.enabled)
-                                    .padding(.vertical, 4)
-                                    .padding(.horizontal, 6)
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(
-                                        RoundedRectangle(cornerRadius: 6)
-                                            .fill(
-                                                BriteLogViewerPresentation.highlightBackground(
-                                                    theme: model.configuration.selectedTheme,
-                                                    isHighlighted: row.isHighlighted,
-                                                ),
-                                            ),
-                                    )
-                            }
-                        }
-                        .tableStyle(.inset(alternatesRowBackgrounds: true))
-                        .textSelection(.enabled)
-                        .frame(minHeight: 240, maxHeight: 380)
+                    VStack(alignment: .leading, spacing: 10) {
+                        labeledValue("Window behavior", value: "Floating utility window")
+                        labeledValue("Auto-open on run", value: model.configuration.showViewerOnLaunch ? "Enabled" : "Disabled")
+                        labeledValue("Buffered records", value: "\(model.viewerSession.records.count)")
+                        labeledValue("Keyboard shortcut", value: "Command-Shift-L")
                     }
+
+                    Button("Open Log Viewer") {
+                        openViewerWindow()
+                    }
+                    .buttonStyle(.borderedProminent)
                 }
             }
 
@@ -269,52 +167,14 @@ struct ContentView: View {
         }
         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .topLeading)
         .padding(24)
-        .searchable(
-            text: viewerSearchTextBinding,
-            placement: .toolbar,
-            prompt: "Filter buffered logs",
-        )
-    }
-
-    private var viewerControls: some View {
-        HStack(alignment: .bottom, spacing: 12) {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Minimum level")
-                    .font(.caption.weight(.semibold))
-                Picker("Minimum level", selection: viewerMinimumLevelBinding) {
-                    Text("All")
-                        .tag(BriteLogRecord.Level?.none)
-
-                    ForEach(viewerLevelOptions, id: \.self) { level in
-                        Text(level.rawValue.uppercased())
-                            .tag(BriteLogRecord.Level?.some(level))
-                    }
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Metadata")
-                    .font(.caption.weight(.semibold))
-                Picker("Metadata", selection: viewerMetadataModeBinding) {
-                    Text("Hidden").tag(BriteLogMetadataMode.hidden)
-                    Text("Compact").tag(BriteLogMetadataMode.compact)
-                    Text("Full").tag(BriteLogMetadataMode.full)
-                }
-                .pickerStyle(.menu)
-                .labelsHidden()
-            }
-
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Highlight text")
-                    .font(.caption.weight(.semibold))
-                TextField("Highlight records containing…", text: viewerHighlightTextBinding)
-                    .textFieldStyle(.roundedBorder)
-                    .frame(minWidth: 220)
-            }
-
-            Spacer(minLength: 0)
+        .onAppear {
+            maybeAutoOpenViewer()
+        }
+        .onChange(of: model.viewerSession.request?.id) { _, _ in
+            maybeAutoOpenViewer()
+        }
+        .onChange(of: model.configuration.showViewerOnLaunch) { _, _ in
+            maybeAutoOpenViewer()
         }
     }
 
@@ -326,6 +186,25 @@ struct ContentView: View {
                 .foregroundStyle(.secondary)
                 .textSelection(.enabled)
         }
+    }
+
+    private func maybeAutoOpenViewer() {
+        guard model.configuration.showViewerOnLaunch else {
+            return
+        }
+        guard let requestID = model.viewerSession.request?.id else {
+            return
+        }
+        guard autoOpenedViewerRequestID != requestID else {
+            return
+        }
+
+        openViewerWindow()
+        autoOpenedViewerRequestID = requestID
+    }
+
+    private func openViewerWindow() {
+        openWindow(id: BriteLogWindowID.viewer)
     }
 }
 

@@ -35,7 +35,7 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 open Apps/BriteLog/BriteLog.xcodeproj
 ```
 
-Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, and the first Xcode-project integration flow. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
+Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, the first Xcode-project integration flow, and the first dedicated floating log viewer window. The overall app is still early, but it now has a real utility-window viewer instead of only placeholder host UI.
 
 ## Usage
 
@@ -46,7 +46,7 @@ The current practical state is:
 - `BriteLog.app` is the entitlement-bearing surface we build, sign, package, and distribute
 - the package modules under `Packages/BriteLog` still hold most of the logging engine and command logic
 - the app now owns persisted configuration, project integration records, and the current debug-run request in Application Support
-- the app UI is currently a host shell for settings and future viewer work, not the finished day-to-day viewer experience yet
+- the app now includes a floating utility-window viewer for live targeted logs, while the rest of the product surface is still being built out
 
 So the real supported workflow today is:
 
@@ -141,7 +141,9 @@ The app now owns the first real viewer-session model instead of stopping at "a r
 - the session moves through `Idle`, `Waiting For Launch`, `Attached`, and `Ended`
 - matching `NSWorkspace` launch and terminate events update the session with the real observed app name and PID
 - the app now streams matching `OSLogStore` local-store records into that session buffer using the requested bundle identifier
-- the app window now shows a theme-aware table view of live buffered records with copyable text, searchable filtering, minimum-level control, metadata layout control, and sticky highlight text
+- the viewer now lives in a dedicated floating utility window instead of the main app window
+- that utility window shows a theme-aware table view of live buffered records with copyable text, searchable filtering, minimum-level control, metadata layout control, and sticky highlight text
+- the main app window now acts as the integration and status surface, with controls for opening the viewer and showing whether it should auto-open on the next targeted run
 
 That means the app-side runtime boundary is now doing real work instead of only holding placeholders: the project integration path tells BriteLog what run is about to happen, and the app now owns both the session timeline and the first live targeted record stream for that run.
 
