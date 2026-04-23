@@ -16,7 +16,7 @@ Like macOS logs, but they're colorful~
 
 ### Status
 
-This project is in early development. The shared package CLI builds and runs today, and the native `BriteLog.app` host is now the entitlement-bearing product surface for packaging, settings, and future viewer work.
+This project is in early development. `BriteLog.app` is the only supported product shape because it is the entitlement-bearing host needed for broad local-store access. The shared package executable still exists for development and internal testing, but it is not a supported standalone way to use or distribute BriteLog.
 
 ### What This Project Is
 
@@ -28,56 +28,30 @@ The goal is to make the logs from another app easier to work with during develop
 
 ## Quick Start
 
-The project is still early, so the package CLI is the quickest way to try it:
+The supported product surface is the native app host in `Apps/BriteLog`.
 
 ```bash
-cd Packages/BriteLog
-swift run BriteLog watch --help
-swift run BriteLog watch --this-app
+xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configuration Debug build
+open Apps/BriteLog/BriteLog.xcodeproj
 ```
 
-If you want the signed app-host path for entitlement work, open `Apps/BriteLog/BriteLog.xcodeproj` in Xcode and build the `BriteLog` scheme.
-On this machine today, launching that built app outside the right provisioning context is still blocked by macOS policy because `com.apple.logging.local-store` is being enforced as a restricted entitlement.
+Right now, that app is the entitlement-bearing shell for packaging, settings, and future viewer work. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
 
 ## Usage
 
-The current workflow is centered on the shared CLI in `Packages/BriteLog`.
+Today, BriteLog is used as a signed macOS app host rather than as a standalone CLI tool.
 
-Watch the app described by the current directory's single `.xcodeproj`:
+The current practical state is:
 
-```bash
-cd Packages/BriteLog
-swift run BriteLog watch --this-app
-```
+- `BriteLog.app` is the entitlement-bearing surface we build, sign, package, and distribute
+- the package modules under `Packages/BriteLog` still hold most of the logging engine and command logic
+- the app UI is currently a host shell for settings and future viewer work, not the finished day-to-day viewer experience yet
 
-Watch a specific app by bundle identifier:
+So the real supported workflow today is:
 
-```bash
-cd Packages/BriteLog
-swift run BriteLog watch --bundle-id com.example.MyApp
-```
-
-Start the broader Console-like stream explicitly:
-
-```bash
-cd Packages/BriteLog
-swift run BriteLog watch --all
-```
-
-List and select terminal color themes:
-
-```bash
-cd Packages/BriteLog
-swift run BriteLog themes list
-swift run BriteLog themes select neon
-```
-
-Check the current `OSLogStore` capability surface:
-
-```bash
-cd Packages/BriteLog
-swift run BriteLog doctor
-```
+1. Build and run the native app target from Xcode or `xcodebuild`
+2. Use that app host as the base for entitlement, provisioning, packaging, and future persisted settings
+3. Treat the package executable as internal development scaffolding, not as the product
 
 ## Development
 
@@ -103,7 +77,7 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 
 The normal repo flow is:
 
-1. Work on the shared CLI and logging behavior in `Packages/BriteLog`.
+1. Work on the shared logging engine and app-support code in `Packages/BriteLog`.
 2. Keep app-only signing, entitlement, and future viewer behavior in `Apps/BriteLog`.
 3. Validate SwiftPM changes from the package directory.
 4. Validate workspace-level maintainer checks from the repo root.
@@ -125,8 +99,6 @@ Package-level validation:
 ```bash
 cd Packages/BriteLog
 swift test
-swift run BriteLog watch --help
-swift run BriteLog doctor
 ```
 
 Workspace-level validation:
@@ -172,7 +144,7 @@ The native-app smoke script accepts two honest outcomes:
 
 ## Release Notes
 
-Formal GitHub release notes are not established yet. For now, the main shipped milestones and structural changes are tracked in git history, and the workspace is still evolving quickly as the package CLI and native app host settle into shape.
+Formal GitHub release notes are not established yet. For now, the main shipped milestones and structural changes are tracked in git history, and the workspace is still evolving quickly as the shared engine and native app host settle into shape.
 
 The current direct-distribution plan is:
 

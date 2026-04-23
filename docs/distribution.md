@@ -1,6 +1,6 @@
 # Distribution
 
-BriteLog now packages the signed native app host, not the old standalone CLI wrapper.
+BriteLog now packages the signed native app host only. The shared package executable remains a development harness, not a supported standalone product surface.
 
 The current direct-distribution artifact shapes are:
 
@@ -51,7 +51,7 @@ The zip bundle is intended for manual or drag-and-drop installation.
 Build it with:
 
 ```bash
-scripts/distribution/package-user-zip.sh
+scripts/distribution/package-app-zip.sh
 ```
 
 ## Signing and Notarization Inputs
