@@ -135,6 +135,9 @@ That gives the app a real storage home before the viewer lands, instead of leavi
 The first real Xcode integration path is now a shared scheme pre-action installed by `BriteLog.app`.
 
 - The app inspects an `.xcodeproj`, resolves a shared scheme, and installs a named pre-action into that scheme's `LaunchAction`.
+- The app keeps this intentionally off the `.pbxproj` surface and only mutates the shared `.xcscheme`.
+- The app refuses to install, repair, or remove the pre-action while Xcode is open, so it does not race the IDE over project-owned files.
+- The app fingerprints the scheme after inspection, creates an app-owned backup before mutation, and refuses stale writes if the scheme changed on disk before the user clicks install or remove.
 - That pre-action writes a small run-request file into BriteLog's Application Support directory with the project path, scheme, target, bundle identifier, configuration, and built product path.
 - `BriteLog.app` polls for that request, persists the latest one, and tracks matching app launches and terminations through `NSWorkspace`.
 

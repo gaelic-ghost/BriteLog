@@ -72,7 +72,7 @@ Planned
 ### Tickets
 
 - [x] Design the handoff contract from Xcode integration into `BriteLog.app` for project path, target, bundle identifier, configuration, and run intent.
-- [ ] Add the first app UI for inspecting an `.xcodeproj`, resolving a shared scheme, and installing the BriteLog pre-action.
+- [ ] Add the first app UI for inspecting an `.xcodeproj`, resolving a shared scheme, and installing the BriteLog pre-action with safe shared-scheme backups, stale-write detection, and an "Xcode must be closed" guard for mutations.
 - [ ] Persist the latest incoming run request and show its current observed app state in the host UI.
 - [ ] Add install/update/remove flows for project integrations instead of install-only coverage.
 - [ ] Add a Run Script build phase fallback for projects that cannot use the shared-scheme path cleanly.

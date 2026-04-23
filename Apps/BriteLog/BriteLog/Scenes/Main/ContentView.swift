@@ -94,6 +94,20 @@ struct ContentView: View {
                                         .foregroundStyle(.secondary)
                                 }
 
+                                if let schemePath = install.schemePath, !schemePath.isEmpty {
+                                    Text("Scheme file: \(schemePath)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .textSelection(.enabled)
+                                }
+
+                                if let backupPath = install.backupPath, !backupPath.isEmpty {
+                                    Text("Latest backup: \(backupPath)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                        .textSelection(.enabled)
+                                }
+
                                 if let notes = install.notes, !notes.isEmpty {
                                     Text(notes)
                                         .font(.caption)

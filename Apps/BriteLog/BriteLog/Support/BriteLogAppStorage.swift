@@ -48,7 +48,7 @@ struct BriteLogAppStorage {
                 )
     }
 
-    static func defaultApplicationSupportDirectory(
+    nonisolated static func defaultApplicationSupportDirectory(
         fileManager: FileManager,
         applicationIdentifier: String,
     ) -> URL {

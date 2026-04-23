@@ -61,6 +61,9 @@ final class BriteLogAppModel {
         projectPath: String,
         schemeName: String? = nil,
         bundleIdentifier: String? = nil,
+        schemePath: String? = nil,
+        schemeFingerprint: String? = nil,
+        backupPath: String? = nil,
         integrationKind: BriteLogProjectInstall.IntegrationKind,
         notes: String? = nil,
     ) {
@@ -71,6 +74,9 @@ final class BriteLogAppModel {
         }) {
             projectInstalls[existingIndex].displayName = displayName
             projectInstalls[existingIndex].bundleIdentifier = bundleIdentifier
+            projectInstalls[existingIndex].schemePath = schemePath
+            projectInstalls[existingIndex].schemeFingerprint = schemeFingerprint
+            projectInstalls[existingIndex].backupPath = backupPath
             projectInstalls[existingIndex].notes = notes
             projectInstalls[existingIndex].updatedAt = now
         } else {
@@ -80,6 +86,9 @@ final class BriteLogAppModel {
                     projectPath: projectPath,
                     schemeName: schemeName,
                     bundleIdentifier: bundleIdentifier,
+                    schemePath: schemePath,
+                    schemeFingerprint: schemeFingerprint,
+                    backupPath: backupPath,
                     integrationKind: integrationKind,
                     notes: notes,
                     createdAt: now,
@@ -88,6 +97,17 @@ final class BriteLogAppModel {
             )
         }
 
+        persistProjectInstalls()
+    }
+
+    func removeProjectInstall(
+        projectPath: String,
+        schemeName: String? = nil,
+        integrationKind: BriteLogProjectInstall.IntegrationKind,
+    ) {
+        projectInstalls.removeAll {
+            $0.projectPath == projectPath && $0.schemeName == schemeName && $0.integrationKind == integrationKind
+        }
         persistProjectInstalls()
     }
 

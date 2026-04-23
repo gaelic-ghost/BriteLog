@@ -22,6 +22,9 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
     var projectPath: String
     var schemeName: String?
     var bundleIdentifier: String?
+    var schemePath: String?
+    var schemeFingerprint: String?
+    var backupPath: String?
     var integrationKind: IntegrationKind
     var notes: String?
     var createdAt: Date
@@ -33,6 +36,9 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
         projectPath: String,
         schemeName: String? = nil,
         bundleIdentifier: String? = nil,
+        schemePath: String? = nil,
+        schemeFingerprint: String? = nil,
+        backupPath: String? = nil,
         integrationKind: IntegrationKind,
         notes: String? = nil,
         createdAt: Date = .now,
@@ -43,6 +49,9 @@ struct BriteLogProjectInstall: Codable, Equatable, Identifiable {
         self.projectPath = projectPath
         self.schemeName = schemeName
         self.bundleIdentifier = bundleIdentifier
+        self.schemePath = schemePath
+        self.schemeFingerprint = schemeFingerprint
+        self.backupPath = backupPath
         self.integrationKind = integrationKind
         self.notes = notes
         self.createdAt = createdAt

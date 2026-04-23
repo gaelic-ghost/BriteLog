@@ -108,6 +108,87 @@ That means:
 
 This keeps the first automation path deterministic and avoids mutating developer-private Xcode user data.
 
+## Safe Mutation Model
+
+The first supported installer is intentionally conservative about how it changes a project.
+
+BriteLog does:
+
+- inspect the shared `.xcscheme` file directly
+- compute a fingerprint of the current scheme contents before mutation
+- write a backup copy into BriteLog's own Application Support backup area
+- write the updated scheme to a temporary file first
+- atomically replace the shared `.xcscheme` file with that temporary file
+- re-inspect the written scheme immediately and refuse to claim success unless the managed pre-action still looks healthy afterward
+
+BriteLog does not:
+
+- edit the project's `.pbxproj`
+- create or share schemes automatically
+- mutate private `xcuserdata` scheme state
+- mutate any project file while Xcode is still open
+
+This is the current safety posture because `.pbxproj` mutation is a much riskier integration surface, and even `.xcscheme` edits are vulnerable to IDE races if Xcode is already holding the project open and reconciling its own project state.
+
+## Xcode-Open Guard
+
+The installer must treat an open Xcode process as a hard block for install, update, and remove operations.
+
+That means:
+
+- inspecting a project while Xcode is open is allowed
+- mutating the shared scheme while Xcode is open is not allowed
+- the app should present this as an inspect-only state and tell the operator to close Xcode first
+
+The goal is to avoid racing Xcode over the same shared scheme file on a real developer machine.
+
+## Fingerprint And Stale-Write Guard
+
+The app should never mutate a scheme file based on stale inspection state.
+
+The supported flow is:
+
+1. inspect the project and resolve the app target
+2. inspect the shared scheme file and compute its fingerprint
+3. present the integration state in the UI
+4. only allow install, repair, or remove if the current on-disk fingerprint still matches the one the app inspected
+
+If the scheme changes between inspection and mutation, BriteLog must refuse the write and ask the user to re-inspect first.
+
+This protects against:
+
+- Xcode changing the scheme after inspection
+- another tool mutating the scheme file
+- the operator editing the scheme manually between steps
+
+## Backup And Recovery Model
+
+Every supported mutation must create a scheme backup before replacing the live file.
+
+The current backup model is:
+
+- backup root:
+  - `~/Library/Application Support/com.gaelic-ghost.BriteLog/integration-backups/`
+- per-project backups:
+  - grouped under a sanitized project-name directory
+- per-mutation backup:
+  - timestamped `.xcscheme` copy written before the live scheme is replaced
+
+This gives BriteLog an app-owned recovery surface instead of leaving recovery implicit inside the project bundle.
+
+## Install-State Semantics
+
+The first installer surface should present one of three explicit states for a resolved scheme:
+
+- `notInstalled`
+  - no managed BriteLog pre-action exists
+- `installed`
+  - exactly one managed BriteLog pre-action exists and it still carries the expected BriteLog handoff markers
+- `drifted`
+  - the scheme contains a BriteLog-titled action in an unexpected shape, or multiple BriteLog actions, and should be repaired explicitly
+
+This state model is intentionally based on operator-facing health rather than byte-for-byte XML identity. The important guarantee is that BriteLog can tell whether its named handoff action is absent, healthy, or needs repair.
+
 ## What The Installer Writes Into The Scheme
 
 The installer adds or updates one Launch pre-action with this operator-facing title:
@@ -121,6 +202,8 @@ The action:
 - asks Launch Services to activate `BriteLog.app` by bundle identifier
 
 The installer must preserve any other existing pre-actions on the scheme.
+
+The installer must also remove or replace only BriteLog-managed actions. Unrelated pre-actions on the same scheme are not BriteLog's to touch.
 
 ## App-Side Runtime Responsibilities
 

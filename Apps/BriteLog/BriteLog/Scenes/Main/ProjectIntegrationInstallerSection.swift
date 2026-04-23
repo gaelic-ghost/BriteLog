@@ -9,12 +9,40 @@ struct ProjectIntegrationInstallerSection: View {
     @State private var inspection: BriteLogXcodeProjectInspection?
     @State private var selectedSchemeName = ""
     @State private var resolvedAppTarget: BriteLogXcodeResolvedAppTarget?
+    @State private var schemeInspection: BriteLogSchemePreActionInspection?
     @State private var statusMessage: String?
     @State private var errorMessage: String?
     @State private var isWorking = false
 
     private let projectInspector = BriteLogXcodeProjectInspector()
     private let schemeInstaller = BriteLogSchemePreActionInstaller()
+
+    private var canInstallOrUpdate: Bool {
+        guard let schemeInspection else {
+            return false
+        }
+
+        return schemeInspection.canMutate
+    }
+
+    private var canRemove: Bool {
+        guard let schemeInspection else {
+            return false
+        }
+
+        return schemeInspection.canMutate && schemeInspection.state != .notInstalled
+    }
+
+    private var installButtonTitle: String {
+        switch schemeInspection?.state {
+            case .installed:
+                "Reinstall BriteLog Pre-Action"
+            case .drifted:
+                "Repair BriteLog Pre-Action"
+            default:
+                "Install BriteLog Pre-Action"
+        }
+    }
 
     var body: some View {
         GroupBox("Project Integration") {
@@ -66,10 +94,42 @@ struct ProjectIntegrationInstallerSection: View {
                         }
                     }
 
-                    Button("Install Scheme Pre-Action") {
-                        installSelectedScheme()
+                    if let schemeInspection {
+                        VStack(alignment: .leading, spacing: 6) {
+                            Text("Integration Status")
+                                .font(.subheadline.weight(.semibold))
+                            Text(schemeInspection.state.displayName)
+                                .font(.caption.weight(.medium))
+                                .foregroundStyle(schemeInspection.state == .installed ? .green : .secondary)
+                            Text(schemeInspection.schemeURL.path)
+                                .font(.caption.monospaced())
+                                .textSelection(.enabled)
+
+                            if let lastModifiedAt = schemeInspection.lastModifiedAt {
+                                Text("Scheme last modified: \(lastModifiedAt.formatted(date: .abbreviated, time: .standard))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            ForEach(schemeInspection.warnings, id: \.self) { warning in
+                                Text(warning)
+                                    .font(.caption)
+                                    .foregroundStyle(.orange)
+                            }
+                        }
                     }
-                    .disabled(isWorking || resolvedAppTarget == nil)
+
+                    HStack(spacing: 8) {
+                        Button(installButtonTitle) {
+                            installOrUpdateSelectedScheme()
+                        }
+                        .disabled(isWorking || resolvedAppTarget == nil || !canInstallOrUpdate)
+
+                        Button("Remove BriteLog Pre-Action") {
+                            removeSelectedScheme()
+                        }
+                        .disabled(isWorking || resolvedAppTarget == nil || !canRemove)
+                    }
                 }
 
                 if isWorking {
@@ -107,6 +167,7 @@ struct ProjectIntegrationInstallerSection: View {
             inspection = nil
             selectedSchemeName = ""
             resolvedAppTarget = nil
+            schemeInspection = nil
             statusMessage = nil
             errorMessage = nil
         }
@@ -140,6 +201,7 @@ struct ProjectIntegrationInstallerSection: View {
                 inspection = nil
                 selectedSchemeName = ""
                 resolvedAppTarget = nil
+                schemeInspection = nil
                 statusMessage = nil
                 errorMessage = error.localizedDescription
                 isWorking = false
@@ -150,6 +212,7 @@ struct ProjectIntegrationInstallerSection: View {
     private func resolveSelectedScheme() {
         guard let inspection, !selectedSchemeName.isEmpty else {
             resolvedAppTarget = nil
+            schemeInspection = nil
             return
         }
 
@@ -168,17 +231,27 @@ struct ProjectIntegrationInstallerSection: View {
                 .value
 
                 resolvedAppTarget = resolvedTarget
+                let schemeInspection = try await Task.detached {
+                    try schemeInstaller.inspect(
+                        projectURL: inspection.projectURL,
+                        appTarget: resolvedTarget,
+                    )
+                }
+                .value
+
+                self.schemeInspection = schemeInspection
                 isWorking = false
             } catch {
                 resolvedAppTarget = nil
+                schemeInspection = nil
                 errorMessage = error.localizedDescription
                 isWorking = false
             }
         }
     }
 
-    private func installSelectedScheme() {
-        guard let inspection, let resolvedAppTarget else {
+    private func installOrUpdateSelectedScheme() {
+        guard let inspection, let resolvedAppTarget, let schemeInspection else {
             return
         }
 
@@ -188,10 +261,11 @@ struct ProjectIntegrationInstallerSection: View {
 
         Task {
             do {
-                let schemeURL = try await Task.detached {
+                let result = try await Task.detached {
                     try schemeInstaller.install(
                         projectURL: inspection.projectURL,
                         appTarget: resolvedAppTarget,
+                        expectedFingerprint: schemeInspection.fingerprint,
                     )
                 }
                 .value
@@ -201,13 +275,64 @@ struct ProjectIntegrationInstallerSection: View {
                     projectPath: inspection.projectURL.path,
                     schemeName: resolvedAppTarget.schemeName,
                     bundleIdentifier: resolvedAppTarget.bundleIdentifier,
+                    schemePath: result.schemeURL.path,
+                    schemeFingerprint: result.inspection.fingerprint,
+                    backupPath: result.backupURL.path,
                     integrationKind: .schemePreAction,
-                    notes: "Shared scheme pre-action installed at \(schemeURL.path).",
+                    notes: "Shared scheme pre-action installed safely with a backup at \(result.backupURL.path).",
                 )
 
+                self.schemeInspection = result.inspection
                 statusMessage = """
                 Installed the BriteLog scheme pre-action into:
-                \(schemeURL.path)
+                \(result.schemeURL.path)
+
+                Backup copy:
+                \(result.backupURL.path)
+                """
+                errorMessage = nil
+                isWorking = false
+            } catch {
+                statusMessage = nil
+                errorMessage = error.localizedDescription
+                isWorking = false
+            }
+        }
+    }
+
+    private func removeSelectedScheme() {
+        guard let inspection, let resolvedAppTarget, let schemeInspection else {
+            return
+        }
+
+        isWorking = true
+        statusMessage = nil
+        errorMessage = nil
+
+        Task {
+            do {
+                let result = try await Task.detached {
+                    try schemeInstaller.remove(
+                        projectURL: inspection.projectURL,
+                        appTarget: resolvedAppTarget,
+                        expectedFingerprint: schemeInspection.fingerprint,
+                    )
+                }
+                .value
+
+                model.removeProjectInstall(
+                    projectPath: inspection.projectURL.path,
+                    schemeName: resolvedAppTarget.schemeName,
+                    integrationKind: .schemePreAction,
+                )
+
+                self.schemeInspection = result.inspection
+                statusMessage = """
+                Removed the BriteLog scheme pre-action from:
+                \(result.schemeURL.path)
+
+                Backup copy:
+                \(result.backupURL.path)
                 """
                 errorMessage = nil
                 isWorking = false
