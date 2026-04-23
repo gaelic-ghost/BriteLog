@@ -31,6 +31,39 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            GroupBox("Current Run Request") {
+                if let currentRunRequest = model.currentRunRequest {
+                    VStack(alignment: .leading, spacing: 10) {
+                        labeledValue("Bundle identifier", value: currentRunRequest.bundleIdentifier)
+                        labeledValue("Scheme", value: currentRunRequest.schemeName)
+                        labeledValue("Build configuration", value: currentRunRequest.buildConfiguration)
+                        labeledValue("Source", value: currentRunRequest.source.rawValue)
+                        labeledValue("Project", value: currentRunRequest.projectPath)
+
+                        if let builtProductPath = currentRunRequest.builtProductPath, !builtProductPath.isEmpty {
+                            labeledValue("Built product", value: builtProductPath)
+                        }
+
+                        if let observedApplication = model.observedApplication {
+                            labeledValue("Observed phase", value: observedApplication.phase.rawValue)
+                            if let localizedName = observedApplication.localizedName, !localizedName.isEmpty {
+                                labeledValue("Observed app", value: localizedName)
+                            }
+                            if let processIdentifier = observedApplication.processIdentifier {
+                                labeledValue("Observed PID", value: String(processIdentifier))
+                            }
+                        }
+                    }
+                    .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    Text("No incoming debug-run request has been received yet. Once a scheme pre-action writes a fresh request, the app will persist it here and watch for launch and terminate events for that bundle identifier.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                }
+            }
+
+            ProjectIntegrationInstallerSection()
+
             GroupBox("Project Integrations") {
                 if model.projectInstalls.isEmpty {
                     Text("No project integration records yet. This is where build-plugin and scheme-install state will appear once the installer flow lands.")
@@ -51,6 +84,12 @@ struct ContentView: View {
 
                                 if let schemeName = install.schemeName {
                                     Text("Scheme: \(schemeName)")
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+
+                                if let bundleIdentifier = install.bundleIdentifier, !bundleIdentifier.isEmpty {
+                                    Text("Bundle ID: \(bundleIdentifier)")
                                         .font(.caption)
                                         .foregroundStyle(.secondary)
                                 }

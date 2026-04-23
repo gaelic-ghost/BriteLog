@@ -35,7 +35,7 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 open Apps/BriteLog/BriteLog.xcodeproj
 ```
 
-Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, and future viewer work. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
+Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, and the first Xcode-project integration flow. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
 
 ## Usage
 
@@ -45,13 +45,13 @@ The current practical state is:
 
 - `BriteLog.app` is the entitlement-bearing surface we build, sign, package, and distribute
 - the package modules under `Packages/BriteLog` still hold most of the logging engine and command logic
-- the app now owns persisted configuration and project integration records in Application Support
+- the app now owns persisted configuration, project integration records, and the current debug-run request in Application Support
 - the app UI is currently a host shell for settings and future viewer work, not the finished day-to-day viewer experience yet
 
 So the real supported workflow today is:
 
 1. Build and run the native app target from Xcode or `xcodebuild`
-2. Use that app host as the base for entitlement, provisioning, packaging, and persisted app-owned state
+2. Use that app host as the base for entitlement, provisioning, packaging, persisted app-owned state, and Xcode integration install flow
 3. Treat the package executable as internal development scaffolding, not as the product
 
 ## Development
@@ -79,7 +79,7 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 The normal repo flow is:
 
 1. Work on the shared logging engine in `Packages/BriteLog` and keep cross-surface theme/rendering primitives there.
-2. Keep app-owned signing, entitlement, persistence, settings, and future viewer behavior in `Apps/BriteLog`.
+2. Keep app-owned signing, entitlement, persistence, settings, project integration, and future viewer behavior in `Apps/BriteLog`.
 3. Validate SwiftPM changes from the package directory.
 4. Validate workspace-level maintainer checks from the repo root.
 
@@ -125,9 +125,20 @@ The native app now persists its own host-level state under the user's Applicatio
 
 - the selected default color theme
 - whether the viewer should open when BriteLog is triggered from future project integration
-- a stored list of project integration records for future build-plugin or scheme-installed hooks
+- a stored list of project integration records for installed Xcode hooks
+- the latest incoming debug-run request handed off from Xcode
 
 That gives the app a real storage home before the viewer lands, instead of leaving app-owned state trapped in package-only CLI scaffolding.
+
+## Current Integration Path
+
+The first real Xcode integration path is now a shared scheme pre-action installed by `BriteLog.app`.
+
+- The app inspects an `.xcodeproj`, resolves a shared scheme, and installs a named pre-action into that scheme's `LaunchAction`.
+- That pre-action writes a small run-request file into BriteLog's Application Support directory with the project path, scheme, target, bundle identifier, configuration, and built product path.
+- `BriteLog.app` polls for that request, persists the latest one, and tracks matching app launches and terminations through `NSWorkspace`.
+
+This is the current deliberate shape because a scheme pre-action is tied to "Run this scheme now", which is a much better first trigger than a generic build hook. A Run Script build phase is still the planned fallback if some projects cannot use shared-scheme pre-actions cleanly, and a SwiftPM/Xcode build plugin is now considered a future helper surface for metadata or installation support rather than the owner of the live watch session.
 
 ## Repo Structure
 

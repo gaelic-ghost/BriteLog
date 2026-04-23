@@ -30,7 +30,7 @@ Use this roadmap to track milestone-level delivery through checklist sections.
 Use this section as a concise rollup of milestone names and statuses, not as a second task list.
 
 - Milestone 0: Signed App Foundation - In Progress
-- Milestone 1: Project Integration - Planned
+- Milestone 1: Project Integration - In Progress
 - Milestone 2: First Viewer - Planned
 
 ## Milestone 0: Signed App Foundation
@@ -67,21 +67,23 @@ Planned
 ### Scope
 
 - [ ] Add a practical project-integration path that helps developers use BriteLog during Xcode debug runs without pretending build-time plugins own the live watch session.
-- [ ] Start with a build-plugin and app-managed install story, and leave source editor extension work as a later convenience layer.
+- [ ] Start with a shared scheme pre-action and app-managed install story, leave Run Script build phases as a fallback, and leave source editor extension work as a later convenience layer.
 
 ### Tickets
 
-- [ ] Design the handoff contract from Xcode integration into `BriteLog.app` for project path, target, bundle identifier, configuration, and run intent.
-- [ ] Prototype a SwiftPM/Xcode build plugin that can provide project/build metadata without trying to become the long-lived watcher itself.
-- [ ] Add app UI for installing, updating, and removing BriteLog integration for a chosen Xcode project or scheme.
-- [ ] Decide whether the first run/debug hook should be a scheme action, a run script phase, or another app-installed integration point.
-- [ ] Document what the plugin knows, what the app owns, and how the live watch session is started.
+- [x] Design the handoff contract from Xcode integration into `BriteLog.app` for project path, target, bundle identifier, configuration, and run intent.
+- [ ] Add the first app UI for inspecting an `.xcodeproj`, resolving a shared scheme, and installing the BriteLog pre-action.
+- [ ] Persist the latest incoming run request and show its current observed app state in the host UI.
+- [ ] Add install/update/remove flows for project integrations instead of install-only coverage.
+- [ ] Add a Run Script build phase fallback for projects that cannot use the shared-scheme path cleanly.
+- [ ] Document what the scheme hook writes, what the app owns, and how the live watch session is started.
+- [ ] Revisit whether a SwiftPM/Xcode build plugin earns its keep as a metadata or installer helper after the scheme-first path is proven.
 
 ### Exit Criteria
 
 - [ ] A developer can point BriteLog at an Xcode project and install a supported integration path from the app.
 - [ ] The installed integration passes enough metadata for the app to target the right debug run.
-- [ ] The plugin and app responsibilities are clearly separated and documented.
+- [ ] The scheme hook, fallback build phase path, and any future plugin helper responsibilities are clearly separated and documented.
 
 ## Milestone 2: First Viewer
 
@@ -119,5 +121,6 @@ Planned
 ## History
 
 - Initial roadmap scaffold created.
-- Added the first BriteLog roadmap with an app-first product shape, build-plugin-first integration direction, and viewer-following milestones.
+- Added the first BriteLog roadmap with an app-first product shape and viewer-following milestones.
 - Marked the app-owned Application Support model and project-install records as complete within Milestone 0.
+- Switched Milestone 1 to a scheme-pre-action-first Xcode integration path, with a Run Script build phase fallback planned and build-plugin work deferred to a later helper decision.
