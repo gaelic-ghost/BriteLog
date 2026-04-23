@@ -103,7 +103,7 @@ In Progress
 - [x] Stream targeted local-store records into the active app-owned viewer session and surface a small live record list in the app window.
 - [x] Add a first log viewer window in the app for targeted live output.
 - [x] Surface saved theme selection and a small set of viewer preferences from app storage.
-- [ ] Add at least one persistent highlighting or filtering primitive that survives app relaunch.
+- [x] Add at least one persistent highlighting or filtering primitive that survives app relaunch.
 - [ ] Validate the first viewer against a real Xcode debug workflow and tighten the rough edges it exposes.
 
 ### Exit Criteria
@@ -115,6 +115,8 @@ In Progress
 ## Backlog Candidates
 
 - [ ] Add an Xcode Source Editor Extension later as a convenience entrypoint for sending the current project or file context into `BriteLog.app`.
+- [ ] Add per-subsystem and per-category presentation customization so styling and emphasis are not only level-driven.
+- [ ] Add configurable indent presentation for re-rendered log output in the viewer and exported text.
 - [ ] Add richer saved highlight rules, pinned events, and persistent incident capture.
 - [ ] Explore an embedded helper or subprocess model if the app needs a separate execution boundary for the live watcher.
 - [ ] Add project templates or install presets for common Xcode integration patterns.
@@ -131,3 +133,4 @@ In Progress
 - Wired the app-owned viewer session to real targeted `OSLogStore` local-store streaming and surfaced the first minimal live record list in the main app window.
 - Turned the raw live record list into a first usable viewer surface with a themed table, toolbar search, sticky minimum-level and metadata controls, and persistent highlight text.
 - Moved the live viewer into a dedicated floating utility window so the main app can stay focused on integration and session status while the log surface remains front-and-visible during debugging.
+- Captured outside feedback requesting subsystem/category-aware customization and indent controls, and noted that `Logger.log(_:)` takes `OSLogMessage`, so wrapper-based indentation helpers belong in explicit research rather than near-term app scope.

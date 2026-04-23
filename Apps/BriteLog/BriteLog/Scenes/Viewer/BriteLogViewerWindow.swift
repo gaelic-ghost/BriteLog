@@ -4,6 +4,12 @@ import SwiftUI
 struct BriteLogViewerWindow: View {
     @Environment(BriteLogAppModel.self) private var model
 
+    @State private var newRuleName = ""
+    @State private var newRuleMatchText = ""
+    @State private var newRuleSubsystem = ""
+    @State private var newRuleCategory = ""
+    @State private var newRuleMinimumLevel: BriteLogRecord.Level?
+
     private var viewerSearchTextBinding: Binding<String> {
         Binding(
             get: { model.viewerPreferences.searchText },
@@ -57,6 +63,7 @@ struct BriteLogViewerWindow: View {
         let viewerRows = BriteLogViewerPresentation.rows(
             from: model.viewerSession.records,
             preferences: model.viewerPreferences,
+            highlightRules: model.highlightRules,
         )
 
         VStack(alignment: .leading, spacing: 16) {
@@ -69,6 +76,7 @@ struct BriteLogViewerWindow: View {
             }
 
             viewerControls
+            savedHighlightRulesSection
 
             if model.viewerSession.records.isEmpty {
                 ContentUnavailableView(
@@ -130,21 +138,29 @@ struct BriteLogViewerWindow: View {
                     .width(min: 180, ideal: 240, max: 340)
 
                     TableColumn("Message") { row in
-                        Text(row.record.message)
-                            .font(.body.monospaced())
-                            .textSelection(.enabled)
-                            .padding(.vertical, 4)
-                            .padding(.horizontal, 6)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                            .background(
-                                RoundedRectangle(cornerRadius: 6)
-                                    .fill(
-                                        BriteLogViewerPresentation.highlightBackground(
-                                            theme: model.configuration.selectedTheme,
-                                            isHighlighted: row.isHighlighted,
-                                        ),
+                        VStack(alignment: .leading, spacing: 4) {
+                            if !row.matchedRuleNames.isEmpty {
+                                Text("Matched rules: \(row.matchedRuleNames.joined(separator: ", "))")
+                                    .font(.caption)
+                                    .foregroundStyle(.secondary)
+                            }
+
+                            Text(row.record.message)
+                                .font(.body.monospaced())
+                                .textSelection(.enabled)
+                        }
+                        .padding(.vertical, 4)
+                        .padding(.horizontal, 6)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .background(
+                            RoundedRectangle(cornerRadius: 6)
+                                .fill(
+                                    BriteLogViewerPresentation.highlightBackground(
+                                        theme: model.configuration.selectedTheme,
+                                        isHighlighted: row.isHighlighted,
                                     ),
-                            )
+                                ),
+                        )
                     }
                 }
                 .tableStyle(.inset(alternatesRowBackgrounds: true))
@@ -197,6 +213,105 @@ struct BriteLogViewerWindow: View {
 
             Spacer(minLength: 0)
         }
+    }
+
+    private var savedHighlightRulesSection: some View {
+        DisclosureGroup("Saved Highlight Rules") {
+            VStack(alignment: .leading, spacing: 12) {
+                Text("Saved rules are stored with the app’s configuration and automatically re-apply when future debug sessions stream matching records.")
+                    .font(.caption)
+                    .foregroundStyle(.secondary)
+
+                if model.highlightRules.isEmpty {
+                    Text("No saved highlight rules yet.")
+                        .foregroundStyle(.secondary)
+                } else {
+                    ForEach(model.highlightRules) { rule in
+                        HStack(alignment: .top, spacing: 12) {
+                            Toggle(
+                                isOn: Binding(
+                                    get: { rule.isEnabled },
+                                    set: { model.setHighlightRuleEnabled(ruleID: rule.id, isEnabled: $0) },
+                                ),
+                            ) {
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(rule.trimmedName)
+                                        .font(.subheadline.weight(.semibold))
+                                    Text(rule.summary)
+                                        .font(.caption)
+                                        .foregroundStyle(.secondary)
+                                }
+                            }
+                            .toggleStyle(.checkbox)
+
+                            Spacer(minLength: 0)
+
+                            Button("Delete", role: .destructive) {
+                                model.removeHighlightRule(ruleID: rule.id)
+                            }
+                            .buttonStyle(.borderless)
+                        }
+                    }
+                }
+
+                Divider()
+
+                VStack(alignment: .leading, spacing: 8) {
+                    Text("New Highlight Rule")
+                        .font(.subheadline.weight(.semibold))
+
+                    HStack(spacing: 12) {
+                        TextField("Rule name", text: $newRuleName)
+                        TextField("Match text", text: $newRuleMatchText)
+                    }
+
+                    HStack(spacing: 12) {
+                        TextField("Subsystem (optional)", text: $newRuleSubsystem)
+                        TextField("Category (optional)", text: $newRuleCategory)
+
+                        Picker("Minimum level", selection: $newRuleMinimumLevel) {
+                            Text("Any level")
+                                .tag(BriteLogRecord.Level?.none)
+
+                            ForEach(viewerLevelOptions, id: \.self) { level in
+                                Text(level.rawValue.uppercased())
+                                    .tag(BriteLogRecord.Level?.some(level))
+                            }
+                        }
+                        .pickerStyle(.menu)
+                        .frame(maxWidth: 180)
+                    }
+
+                    HStack {
+                        Button("Save Rule") {
+                            model.addHighlightRule(
+                                name: newRuleName,
+                                matchText: newRuleMatchText,
+                                subsystem: newRuleSubsystem,
+                                category: newRuleCategory,
+                                minimumLevel: newRuleMinimumLevel,
+                            )
+
+                            if model.lastErrorDescription == nil {
+                                resetNewRuleFields()
+                            }
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Spacer(minLength: 0)
+                    }
+                }
+            }
+            .padding(.top, 8)
+        }
+    }
+
+    private func resetNewRuleFields() {
+        newRuleName = ""
+        newRuleMatchText = ""
+        newRuleSubsystem = ""
+        newRuleCategory = ""
+        newRuleMinimumLevel = nil
     }
 }
 

@@ -39,6 +39,17 @@ struct BriteLogTests {
                 minimumLevel: .warning,
                 metadataMode: .full,
             ),
+            highlightRules: [
+                BriteLogHighlightRule(
+                    id: UUID(uuidString: "AAAAAAAA-BBBB-CCCC-DDDD-EEEEEEEEEEEE") ?? UUID(),
+                    name: "Startup warnings",
+                    matchText: "startup",
+                    subsystem: "com.example.ExampleApp",
+                    category: "",
+                    minimumLevel: .warning,
+                    isEnabled: true,
+                ),
+            ],
         )
         let installs = [
             BriteLogProjectInstall(
@@ -371,13 +382,95 @@ struct BriteLogTests {
             metadataMode: .full,
         )
 
-        let rows = BriteLogViewerPresentation.rows(from: records, preferences: preferences)
+        let rows = BriteLogViewerPresentation.rows(
+            from: records,
+            preferences: preferences,
+            highlightRules: [],
+        )
 
         #expect(rows.count == 1)
         #expect(rows[0].record.message == "Network request failed hard")
         #expect(rows[0].isHighlighted)
         #expect(rows[0].sourceText == "com.example.ExampleApp")
         #expect(rows[0].detailsText?.contains("network") == true)
+        #expect(rows[0].matchedRuleNames.isEmpty)
+    }
+
+    @Test
+    func `viewer presentation applies saved highlight rules with subsystem and level constraints`() {
+        let records = [
+            BriteLogRecord(
+                date: Date(timeIntervalSinceReferenceDate: 100),
+                level: .error,
+                subsystem: "com.example.ExampleApp",
+                category: "network",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "APIClient",
+                message: "Request timed out",
+            ),
+            BriteLogRecord(
+                date: Date(timeIntervalSinceReferenceDate: 101),
+                level: .info,
+                subsystem: "com.example.ExampleApp",
+                category: "network",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "APIClient",
+                message: "Retry scheduled",
+            ),
+        ]
+        let rules = [
+            BriteLogHighlightRule(
+                name: "Network failures",
+                matchText: "request",
+                subsystem: "com.example.ExampleApp",
+                category: "network",
+                minimumLevel: .warning,
+                isEnabled: true,
+            ),
+        ]
+
+        let rows = BriteLogViewerPresentation.rows(
+            from: records,
+            preferences: .default,
+            highlightRules: rules,
+        )
+
+        #expect(rows.count == 2)
+        #expect(rows[0].isHighlighted)
+        #expect(rows[0].matchedRuleNames == ["Network failures"])
+        #expect(rows[1].isHighlighted == false)
+        #expect(rows[1].matchedRuleNames.isEmpty)
+    }
+
+    @Test
+    func `app model saves enables and removes persistent highlight rules`() throws {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            shouldStartSystemIntegration: false,
+        )
+
+        model.addHighlightRule(
+            name: "Warnings",
+            matchText: "",
+            subsystem: "com.example.ExampleApp",
+            category: "",
+            minimumLevel: .warning,
+        )
+
+        #expect(model.highlightRules.count == 1)
+        let ruleID = try #require(model.highlightRules.first?.id)
+        #expect(model.lastErrorDescription == nil)
+
+        model.setHighlightRuleEnabled(ruleID: ruleID, isEnabled: false)
+        #expect(model.highlightRules.first?.isEnabled == false)
+
+        model.removeHighlightRule(ruleID: ruleID)
+        #expect(model.highlightRules.isEmpty)
     }
 
     @Test

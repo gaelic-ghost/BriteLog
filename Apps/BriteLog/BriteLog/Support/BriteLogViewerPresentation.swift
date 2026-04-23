@@ -9,6 +9,7 @@ enum BriteLogViewerPresentation {
         var sourceText: String
         var detailsText: String?
         var isHighlighted: Bool
+        var matchedRuleNames: [String]
     }
 
     private static let timestampFormatter: DateFormatter = {
@@ -20,11 +21,17 @@ enum BriteLogViewerPresentation {
     static func rows(
         from records: [BriteLogRecord],
         preferences: BriteLogViewerPreferences,
+        highlightRules: [BriteLogHighlightRule] = [],
     ) -> [Row] {
         records.enumerated().compactMap { index, record in
             guard matches(record, preferences: preferences) else {
                 return nil
             }
+
+            let matchedRuleNames = highlightRules
+                .filter { $0.matches(record) }
+                .map(\.trimmedName)
+                .filter { !$0.isEmpty }
 
             return Row(
                 id: rowID(for: record, index: index),
@@ -32,7 +39,8 @@ enum BriteLogViewerPresentation {
                 timestampText: timestampFormatter.string(from: record.date),
                 sourceText: sourceText(for: record, metadataMode: preferences.metadataMode),
                 detailsText: detailsText(for: record, metadataMode: preferences.metadataMode),
-                isHighlighted: isHighlighted(record, text: preferences.highlightText),
+                isHighlighted: isHighlighted(record, text: preferences.highlightText) || !matchedRuleNames.isEmpty,
+                matchedRuleNames: matchedRuleNames,
             )
         }
     }

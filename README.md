@@ -47,6 +47,7 @@ The current practical state is:
 - the package modules under `Packages/BriteLog` still hold most of the logging engine and command logic
 - the app now owns persisted configuration, project integration records, and the current debug-run request in Application Support
 - the app now includes a floating utility-window viewer for live targeted logs, while the rest of the product surface is still being built out
+- the app now supports saved highlight rules that survive relaunch and re-apply during future debug sessions
 
 So the real supported workflow today is:
 
@@ -130,6 +131,7 @@ The native app now persists its own host-level state under the user's Applicatio
 - the current in-memory viewer session state derived from that run request and matched workspace app events
 - the current live record buffer streamed from the local unified log store for the active targeted session
 - sticky viewer preferences like search text, highlight text, minimum level, and metadata layout
+- saved highlight rules with optional text, subsystem, category, and minimum-level constraints
 
 That gives the app a real storage home before the viewer lands, instead of leaving app-owned state trapped in package-only CLI scaffolding.
 
@@ -143,6 +145,7 @@ The app now owns the first real viewer-session model instead of stopping at "a r
 - the app now streams matching `OSLogStore` local-store records into that session buffer using the requested bundle identifier
 - the viewer now lives in a dedicated floating utility window instead of the main app window
 - that utility window shows a theme-aware table view of live buffered records with copyable text, searchable filtering, minimum-level control, metadata layout control, and sticky highlight text
+- the viewer can now save named highlight rules that re-apply by text, subsystem, category, and optional minimum level on future runs
 - the main app window now acts as the integration and status surface, with controls for opening the viewer and showing whether it should auto-open on the next targeted run
 
 That means the app-side runtime boundary is now doing real work instead of only holding placeholders: the project integration path tells BriteLog what run is about to happen, and the app now owns both the session timeline and the first live targeted record stream for that run.

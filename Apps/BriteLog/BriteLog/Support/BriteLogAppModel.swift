@@ -38,6 +38,10 @@ final class BriteLogAppModel {
         configuration.viewerPreferences
     }
 
+    var highlightRules: [BriteLogHighlightRule] {
+        configuration.highlightRules
+    }
+
     var applicationSupportPath: String {
         storage.applicationSupportDirectory.path
     }
@@ -135,6 +139,57 @@ final class BriteLogAppModel {
 
     func setViewerMetadataMode(_ value: BriteLogMetadataMode) {
         configuration.viewerPreferences.metadataMode = value
+        persistConfiguration()
+    }
+
+    func addHighlightRule(
+        name: String,
+        matchText: String,
+        subsystem: String,
+        category: String,
+        minimumLevel: BriteLogRecord.Level?,
+    ) {
+        let rule = BriteLogHighlightRule(
+            name: name,
+            matchText: matchText,
+            subsystem: subsystem,
+            category: category,
+            minimumLevel: minimumLevel,
+        )
+
+        guard !rule.trimmedName.isEmpty else {
+            lastErrorDescription = """
+            BriteLog could not save a highlight rule because the rule name is empty.
+            Give the rule a readable name so it can be managed later.
+            """
+            return
+        }
+        guard rule.hasConstraints else {
+            lastErrorDescription = """
+            BriteLog could not save highlight rule “\(rule.trimmedName)” because it has no match constraints.
+            Add text, subsystem, category, or a minimum level before saving the rule.
+            """
+            return
+        }
+
+        configuration.highlightRules.append(rule)
+        persistConfiguration()
+    }
+
+    func setHighlightRuleEnabled(
+        ruleID: UUID,
+        isEnabled: Bool,
+    ) {
+        guard let index = configuration.highlightRules.firstIndex(where: { $0.id == ruleID }) else {
+            return
+        }
+
+        configuration.highlightRules[index].isEnabled = isEnabled
+        persistConfiguration()
+    }
+
+    func removeHighlightRule(ruleID: UUID) {
+        configuration.highlightRules.removeAll { $0.id == ruleID }
         persistConfiguration()
     }
 
