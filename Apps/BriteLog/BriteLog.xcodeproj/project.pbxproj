@@ -1,0 +1,620 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		497663A62F99992500EC6060 /* BriteLogCLI in Frameworks */ = {isa = PBXBuildFile; productRef = 497663A52F99992500EC6060 /* BriteLogCLI */; };
+		497663AA2F999A3A00EC6060 /* BriteLogCLI in Frameworks */ = {isa = PBXBuildFile; productRef = 497663A92F999A3A00EC6060 /* BriteLogCLI */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		497663882F9998C300EC6060 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 497663722F9998C200EC6060 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 497663792F9998C200EC6060;
+			remoteInfo = BriteLog;
+		};
+		497663922F9998C300EC6060 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 497663722F9998C200EC6060 /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 497663792F9998C200EC6060;
+			remoteInfo = BriteLog;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		4976637A2F9998C200EC6060 /* BriteLog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = BriteLog.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		497663872F9998C300EC6060 /* BriteLogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BriteLogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		497663912F9998C300EC6060 /* BriteLogUITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = BriteLogUITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+/* End PBXFileReference section */
+
+/* Begin PBXFileSystemSynchronizedRootGroup section */
+		4976637C2F9998C200EC6060 /* BriteLog */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BriteLog;
+			sourceTree = "<group>";
+		};
+		4976638A2F9998C300EC6060 /* BriteLogTests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BriteLogTests;
+			sourceTree = "<group>";
+		};
+		497663942F9998C300EC6060 /* BriteLogUITests */ = {
+			isa = PBXFileSystemSynchronizedRootGroup;
+			path = BriteLogUITests;
+			sourceTree = "<group>";
+		};
+/* End PBXFileSystemSynchronizedRootGroup section */
+
+/* Begin PBXFrameworksBuildPhase section */
+		497663772F9998C200EC6060 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				497663A62F99992500EC6060 /* BriteLogCLI in Frameworks */,
+				497663AA2F999A3A00EC6060 /* BriteLogCLI in Frameworks */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		497663842F9998C300EC6060 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4976638E2F9998C300EC6060 /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXFrameworksBuildPhase section */
+
+/* Begin PBXGroup section */
+		497663712F9998C200EC6060 = {
+			isa = PBXGroup;
+			children = (
+				4976637C2F9998C200EC6060 /* BriteLog */,
+				4976638A2F9998C300EC6060 /* BriteLogTests */,
+				497663942F9998C300EC6060 /* BriteLogUITests */,
+				4976637B2F9998C200EC6060 /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		4976637B2F9998C200EC6060 /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				4976637A2F9998C200EC6060 /* BriteLog.app */,
+				497663872F9998C300EC6060 /* BriteLogTests.xctest */,
+				497663912F9998C300EC6060 /* BriteLogUITests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		497663792F9998C200EC6060 /* BriteLog */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4976639B2F9998C300EC6060 /* Build configuration list for PBXNativeTarget "BriteLog" */;
+			buildPhases = (
+				497663762F9998C200EC6060 /* Sources */,
+				497663772F9998C200EC6060 /* Frameworks */,
+				497663782F9998C200EC6060 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			fileSystemSynchronizedGroups = (
+				4976637C2F9998C200EC6060 /* BriteLog */,
+			);
+			name = BriteLog;
+			packageProductDependencies = (
+				497663A52F99992500EC6060 /* BriteLogCLI */,
+				497663A92F999A3A00EC6060 /* BriteLogCLI */,
+			);
+			productName = BriteLog;
+			productReference = 4976637A2F9998C200EC6060 /* BriteLog.app */;
+			productType = "com.apple.product-type.application";
+		};
+		497663862F9998C300EC6060 /* BriteLogTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 4976639E2F9998C300EC6060 /* Build configuration list for PBXNativeTarget "BriteLogTests" */;
+			buildPhases = (
+				497663832F9998C300EC6060 /* Sources */,
+				497663842F9998C300EC6060 /* Frameworks */,
+				497663852F9998C300EC6060 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				497663892F9998C300EC6060 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				4976638A2F9998C300EC6060 /* BriteLogTests */,
+			);
+			name = BriteLogTests;
+			packageProductDependencies = (
+			);
+			productName = BriteLogTests;
+			productReference = 497663872F9998C300EC6060 /* BriteLogTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		497663902F9998C300EC6060 /* BriteLogUITests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 497663A12F9998C300EC6060 /* Build configuration list for PBXNativeTarget "BriteLogUITests" */;
+			buildPhases = (
+				4976638D2F9998C300EC6060 /* Sources */,
+				4976638E2F9998C300EC6060 /* Frameworks */,
+				4976638F2F9998C300EC6060 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				497663932F9998C300EC6060 /* PBXTargetDependency */,
+			);
+			fileSystemSynchronizedGroups = (
+				497663942F9998C300EC6060 /* BriteLogUITests */,
+			);
+			name = BriteLogUITests;
+			packageProductDependencies = (
+			);
+			productName = BriteLogUITests;
+			productReference = 497663912F9998C300EC6060 /* BriteLogUITests.xctest */;
+			productType = "com.apple.product-type.bundle.ui-testing";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		497663722F9998C200EC6060 /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = 1;
+				LastSwiftUpdateCheck = 2640;
+				LastUpgradeCheck = 2640;
+				TargetAttributes = {
+					497663792F9998C200EC6060 = {
+						CreatedOnToolsVersion = 26.4.1;
+					};
+					497663862F9998C300EC6060 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 497663792F9998C200EC6060;
+					};
+					497663902F9998C300EC6060 = {
+						CreatedOnToolsVersion = 26.4.1;
+						TestTargetID = 497663792F9998C200EC6060;
+					};
+				};
+			};
+			buildConfigurationList = 497663752F9998C200EC6060 /* Build configuration list for PBXProject "BriteLog" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				en,
+				Base,
+			);
+			mainGroup = 497663712F9998C200EC6060;
+			minimizedProjectReferenceProxies = 1;
+			packageReferences = (
+				497663A82F999A3A00EC6060 /* XCLocalSwiftPackageReference "../../Packages/BriteLog" */,
+			);
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 4976637B2F9998C200EC6060 /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				497663792F9998C200EC6060 /* BriteLog */,
+				497663862F9998C300EC6060 /* BriteLogTests */,
+				497663902F9998C300EC6060 /* BriteLogUITests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		497663782F9998C200EC6060 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		497663852F9998C300EC6060 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4976638F2F9998C300EC6060 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		497663762F9998C200EC6060 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		497663832F9998C300EC6060 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		4976638D2F9998C300EC6060 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		497663892F9998C300EC6060 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 497663792F9998C200EC6060 /* BriteLog */;
+			targetProxy = 497663882F9998C300EC6060 /* PBXContainerItemProxy */;
+		};
+		497663932F9998C300EC6060 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 497663792F9998C200EC6060 /* BriteLog */;
+			targetProxy = 497663922F9998C300EC6060 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin XCBuildConfiguration section */
+		497663992F9998C300EC6060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				DEVELOPMENT_TEAM = BC73766F69;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"DEBUG=1",
+					"$(inherited)",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = "DEBUG $(inherited)";
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		4976639A2F9998C300EC6060 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = YES;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++20";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				DEVELOPMENT_TEAM = BC73766F69;
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_USER_SCRIPT_SANDBOXING = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu17;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				LOCALIZATION_PREFERS_STRING_CATALOGS = YES;
+				MACOSX_DEPLOYMENT_TARGET = 26.4;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				SDKROOT = macosx;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		4976639C2F9998C300EC6060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BC73766F69;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 0.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLog;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		4976639D2F9998C300EC6060 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GLOBAL_ACCENT_COLOR_NAME = AccentColor;
+				"CODE_SIGN_IDENTITY[sdk=macosx*]" = "Apple Development";
+				CODE_SIGN_STYLE = Automatic;
+				COMBINE_HIDPI_IMAGES = YES;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BC73766F69;
+				ENABLE_APP_SANDBOX = YES;
+				ENABLE_HARDENED_RUNTIME = YES;
+				ENABLE_PREVIEWS = YES;
+				ENABLE_USER_SELECTED_FILES = readonly;
+				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.developer-tools";
+				INFOPLIST_KEY_NSHumanReadableCopyright = "";
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 0.5;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLog;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				REGISTER_APP_GROUPS = YES;
+				STRING_CATALOG_GENERATE_SYMBOLS = YES;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_DEFAULT_ACTOR_ISOLATION = MainActor;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		4976639F2F9998C300EC6060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BC73766F69;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BriteLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BriteLog";
+			};
+			name = Debug;
+		};
+		497663A02F9998C300EC6060 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BC73766F69;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLogTests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/BriteLog.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/BriteLog";
+			};
+			name = Release;
+		};
+		497663A22F9998C300EC6060 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BC73766F69;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = BriteLog;
+			};
+			name = Debug;
+		};
+		497663A32F9998C300EC6060 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				DEVELOPMENT_TEAM = BC73766F69;
+				GENERATE_INFOPLIST_FILE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 15.6;
+				MARKETING_VERSION = 1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.galewilliams.BriteLogUITests;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				STRING_CATALOG_GENERATE_SYMBOLS = NO;
+				SWIFT_APPROACHABLE_CONCURRENCY = YES;
+				SWIFT_EMIT_LOC_STRINGS = NO;
+				SWIFT_UPCOMING_FEATURE_MEMBER_IMPORT_VISIBILITY = YES;
+				SWIFT_VERSION = 6.0;
+				TEST_TARGET_NAME = BriteLog;
+			};
+			name = Release;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		497663752F9998C200EC6060 /* Build configuration list for PBXProject "BriteLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				497663992F9998C300EC6060 /* Debug */,
+				4976639A2F9998C300EC6060 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4976639B2F9998C300EC6060 /* Build configuration list for PBXNativeTarget "BriteLog" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4976639C2F9998C300EC6060 /* Debug */,
+				4976639D2F9998C300EC6060 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		4976639E2F9998C300EC6060 /* Build configuration list for PBXNativeTarget "BriteLogTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				4976639F2F9998C300EC6060 /* Debug */,
+				497663A02F9998C300EC6060 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+		497663A12F9998C300EC6060 /* Build configuration list for PBXNativeTarget "BriteLogUITests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				497663A22F9998C300EC6060 /* Debug */,
+				497663A32F9998C300EC6060 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
+/* End XCConfigurationList section */
+
+/* Begin XCLocalSwiftPackageReference section */
+		497663A82F999A3A00EC6060 /* XCLocalSwiftPackageReference "../../Packages/BriteLog" */ = {
+			isa = XCLocalSwiftPackageReference;
+			relativePath = ../../Packages/BriteLog;
+		};
+/* End XCLocalSwiftPackageReference section */
+
+/* Begin XCSwiftPackageProductDependency section */
+		497663A52F99992500EC6060 /* BriteLogCLI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BriteLogCLI;
+		};
+		497663A92F999A3A00EC6060 /* BriteLogCLI */ = {
+			isa = XCSwiftPackageProductDependency;
+			productName = BriteLogCLI;
+		};
+/* End XCSwiftPackageProductDependency section */
+	};
+	rootObject = 497663722F9998C200EC6060 /* Project object */;
+}
