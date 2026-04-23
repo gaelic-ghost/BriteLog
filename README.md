@@ -200,4 +200,6 @@ See [docs/distribution.md](./docs/distribution.md) for the current packaging lay
 
 ## License
 
-See [LICENSE](./LICENSE).
+BriteLog is licensed under the Apache License, Version 2.0.
+
+See [LICENSE](./LICENSE) and [NOTICE](./NOTICE).
