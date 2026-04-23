@@ -47,6 +47,37 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
+            GroupBox("Live Records") {
+                if model.viewerSession.records.isEmpty {
+                    Text("No live records have been buffered for the current viewer session yet. Once the targeted app emits unified log entries for its bundle identifier, they will appear here.")
+                        .foregroundStyle(.secondary)
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                } else {
+                    ScrollView {
+                        LazyVStack(alignment: .leading, spacing: 8) {
+                            ForEach(Array(model.viewerSession.records.suffix(30).enumerated()), id: \.offset) { _, record in
+                                VStack(alignment: .leading, spacing: 2) {
+                                    Text(record.date.formatted(date: .omitted, time: .standard))
+                                        .font(.caption.monospaced())
+                                        .foregroundStyle(.secondary)
+                                    Text("\(record.level.rawValue.uppercased()) \(record.category): \(record.message)")
+                                        .font(.caption)
+                                        .textSelection(.enabled)
+
+                                    if let process = record.process, let processIdentifier = record.processIdentifier {
+                                        Text("\(process) [\(processIdentifier)]")
+                                            .font(.caption2)
+                                            .foregroundStyle(.secondary)
+                                    }
+                                }
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                            }
+                        }
+                    }
+                    .frame(minHeight: 120, maxHeight: 220)
+                }
+            }
+
             GroupBox("Current Run Request") {
                 if let viewerRequest = model.viewerSession.request {
                     VStack(alignment: .leading, spacing: 10) {

@@ -100,6 +100,7 @@ Planned
 
 - [ ] Build a viewer model that owns the current watch session, live records, filters, and presentation state.
 - [x] Build the first app-owned viewer-session foundation for current run request, observed app state, session status, and buffered records.
+- [x] Stream targeted local-store records into the active app-owned viewer session and surface a small live record list in the app window.
 - [ ] Add a first log viewer window in the app for targeted live output.
 - [ ] Surface saved theme selection and a small set of viewer preferences from app storage.
 - [ ] Add at least one persistent highlighting or filtering primitive that survives app relaunch.
@@ -127,3 +128,4 @@ Planned
 - Switched Milestone 1 to a scheme-pre-action-first Xcode integration path, with a Run Script build phase fallback planned and build-plugin work deferred to a later helper decision.
 - Hardened the shared-scheme installer with backup, stale-write, and assisted Xcode close/apply/reopen safety behavior, and completed the first install/update/remove project-integration UI.
 - Added the first app-owned viewer-session model so the app now tracks idle, waiting, attached, and ended run state with a buffered record surface ahead of the full viewer UI.
+- Wired the app-owned viewer session to real targeted `OSLogStore` local-store streaming and surfaced the first minimal live record list in the main app window.

@@ -128,6 +128,7 @@ The native app now persists its own host-level state under the user's Applicatio
 - a stored list of project integration records for installed Xcode hooks
 - the latest incoming debug-run request handed off from Xcode
 - the current in-memory viewer session state derived from that run request and matched workspace app events
+- the current live record buffer streamed from the local unified log store for the active targeted session
 
 That gives the app a real storage home before the viewer lands, instead of leaving app-owned state trapped in package-only CLI scaffolding.
 
@@ -138,9 +139,10 @@ The app now owns the first real viewer-session model instead of stopping at "a r
 - a fresh Xcode handoff opens a viewer session for that requested app target
 - the session moves through `Idle`, `Waiting For Launch`, `Attached`, and `Ended`
 - matching `NSWorkspace` launch and terminate events update the session with the real observed app name and PID
-- the session now has a live record buffer surface ready for the eventual log viewer window, even though the full on-screen viewer is still ahead
+- the app now streams matching `OSLogStore` local-store records into that session buffer using the requested bundle identifier
+- the app window already shows a small live record list for the current session, even though the more polished dedicated viewer window is still ahead
 
-That means the app-side runtime boundary is finally real: the project integration path tells BriteLog what run is about to happen, and the app now has a durable place to own that live session while the first viewer UI is being built.
+That means the app-side runtime boundary is now doing real work instead of only holding placeholders: the project integration path tells BriteLog what run is about to happen, and the app now owns both the session timeline and the first live targeted record stream for that run.
 
 ## Current Integration Path
 

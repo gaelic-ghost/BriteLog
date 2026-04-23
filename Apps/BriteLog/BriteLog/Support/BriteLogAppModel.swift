@@ -20,12 +20,15 @@ final class BriteLogAppModel {
     var lastErrorDescription: String?
 
     private let runningApplicationsProvider: @Sendable () -> [WorkspaceApplicationSnapshot]
+    private let liveRecordSource: BriteLogViewerSessionLiveRecordSource
     private let currentDate: @Sendable () -> Date
     private let shouldStartSystemIntegration: Bool
 
     private var runRequestPollingTask: Task<Void, Never>?
+    private var viewerRecordStreamingTask: Task<Void, Never>?
     private var launchObserver: NSObjectProtocol?
     private var terminateObserver: NSObjectProtocol?
+    private var activeViewerRecordRequestID: UUID?
 
     var observedApplication: BriteLogObservedApplication? {
         viewerSession.observedApplication
@@ -38,6 +41,7 @@ final class BriteLogAppModel {
     init(storage: BriteLogAppStorage = .init()) {
         self.storage = storage
         runningApplicationsProvider = Self.defaultRunningApplicationsProvider
+        liveRecordSource = .live
         currentDate = Date.init
         shouldStartSystemIntegration = true
         let initialDate = Date()
@@ -46,6 +50,7 @@ final class BriteLogAppModel {
         currentRunRequest = nil
         viewerSession = .idle(at: initialDate)
         lastErrorDescription = nil
+        activeViewerRecordRequestID = nil
         reloadFromDisk()
         configureWorkspaceNotifications()
         startRunRequestPolling()
@@ -54,11 +59,13 @@ final class BriteLogAppModel {
     init(
         storage: BriteLogAppStorage,
         runningApplicationsProvider: @escaping @Sendable () -> [WorkspaceApplicationSnapshot],
+        liveRecordSource: BriteLogViewerSessionLiveRecordSource = .live,
         currentDate: @escaping @Sendable () -> Date = Date.init,
         shouldStartSystemIntegration: Bool,
     ) {
         self.storage = storage
         self.runningApplicationsProvider = runningApplicationsProvider
+        self.liveRecordSource = liveRecordSource
         self.currentDate = currentDate
         self.shouldStartSystemIntegration = shouldStartSystemIntegration
         let initialDate = currentDate()
@@ -67,6 +74,7 @@ final class BriteLogAppModel {
         currentRunRequest = nil
         viewerSession = .idle(at: initialDate)
         lastErrorDescription = nil
+        activeViewerRecordRequestID = nil
         reloadFromDisk()
         if shouldStartSystemIntegration {
             configureWorkspaceNotifications()
@@ -247,6 +255,7 @@ final class BriteLogAppModel {
             records: viewerSession.records,
             preserveTimeline: true,
         )
+        syncViewerRecordStreaming()
     }
 
     private func persistConfiguration() {
@@ -338,6 +347,7 @@ final class BriteLogAppModel {
     private func refreshObservedApplicationFromWorkspace() {
         guard let currentRunRequest else {
             viewerSession = .idle(at: currentDate())
+            syncViewerRecordStreaming()
             return
         }
 
@@ -374,6 +384,8 @@ final class BriteLogAppModel {
                 preserveTimeline: true,
             )
         }
+
+        syncViewerRecordStreaming()
     }
 
     private func makeViewerSession(
@@ -403,5 +415,71 @@ final class BriteLogAppModel {
             updatedAt: now,
             endedAt: endedAt,
         )
+    }
+
+    private func syncViewerRecordStreaming() {
+        guard let request = viewerSession.request else {
+            stopViewerRecordStreaming()
+            return
+        }
+        guard viewerSession.state != .ended else {
+            stopViewerRecordStreaming()
+            return
+        }
+        guard activeViewerRecordRequestID != request.id else {
+            return
+        }
+
+        stopViewerRecordStreaming()
+        activeViewerRecordRequestID = request.id
+
+        viewerRecordStreamingTask = Task { [weak self] in
+            do {
+                guard let strongSelf = self else {
+                    return
+                }
+
+                let stream = try strongSelf.liveRecordSource.makeStream(request)
+
+                for try await record in stream {
+                    guard !Task.isCancelled else {
+                        break
+                    }
+
+                    await MainActor.run {
+                        guard let self else {
+                            return
+                        }
+                        guard self.activeViewerRecordRequestID == request.id else {
+                            return
+                        }
+
+                        self.appendViewerRecords([record])
+                    }
+                }
+            } catch is CancellationError {
+                return
+            } catch {
+                await MainActor.run {
+                    guard let self else {
+                        return
+                    }
+                    guard self.activeViewerRecordRequestID == request.id else {
+                        return
+                    }
+
+                    self.lastErrorDescription = """
+                    BriteLog could not stream live records for bundle identifier \
+                    \(request.bundleIdentifier). \(error.localizedDescription)
+                    """
+                }
+            }
+        }
+    }
+
+    private func stopViewerRecordStreaming() {
+        viewerRecordStreamingTask?.cancel()
+        viewerRecordStreamingTask = nil
+        activeViewerRecordRequestID = nil
     }
 }
