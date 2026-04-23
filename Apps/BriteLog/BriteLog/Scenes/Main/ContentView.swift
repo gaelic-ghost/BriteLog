@@ -19,7 +19,7 @@ struct ContentView: View {
             Text("A signed macOS host for the shared BriteLog engine")
                 .font(.headline)
 
-            Text("This app now owns app-level configuration and project install records in Application Support. The next step is connecting those records to the first real viewer and Xcode integration flow.")
+            Text("This app now owns app-level configuration, project integration records, and the first real viewer-session state for a targeted debug run.")
                 .foregroundStyle(.secondary)
 
             GroupBox("Current App State") {
@@ -31,20 +31,36 @@ struct ContentView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
             }
 
-            GroupBox("Current Run Request") {
-                if let currentRunRequest = model.currentRunRequest {
-                    VStack(alignment: .leading, spacing: 10) {
-                        labeledValue("Bundle identifier", value: currentRunRequest.bundleIdentifier)
-                        labeledValue("Scheme", value: currentRunRequest.schemeName)
-                        labeledValue("Build configuration", value: currentRunRequest.buildConfiguration)
-                        labeledValue("Source", value: currentRunRequest.source.rawValue)
-                        labeledValue("Project", value: currentRunRequest.projectPath)
+            GroupBox("Viewer Session") {
+                VStack(alignment: .leading, spacing: 10) {
+                    labeledValue("Session state", value: model.viewerSession.state.displayName)
+                    labeledValue("Buffered records", value: "\(model.viewerSession.records.count)")
 
-                        if let builtProductPath = currentRunRequest.builtProductPath, !builtProductPath.isEmpty {
+                    if let createdAt = model.viewerSession.request.map({ _ in model.viewerSession.createdAt }) {
+                        labeledValue("Started", value: createdAt.formatted(date: .abbreviated, time: .standard))
+                    }
+
+                    if let endedAt = model.viewerSession.endedAt {
+                        labeledValue("Ended", value: endedAt.formatted(date: .abbreviated, time: .standard))
+                    }
+                }
+                .frame(maxWidth: .infinity, alignment: .leading)
+            }
+
+            GroupBox("Current Run Request") {
+                if let viewerRequest = model.viewerSession.request {
+                    VStack(alignment: .leading, spacing: 10) {
+                        labeledValue("Bundle identifier", value: viewerRequest.bundleIdentifier)
+                        labeledValue("Scheme", value: viewerRequest.schemeName)
+                        labeledValue("Build configuration", value: viewerRequest.buildConfiguration)
+                        labeledValue("Source", value: viewerRequest.source.rawValue)
+                        labeledValue("Project", value: viewerRequest.projectPath)
+
+                        if let builtProductPath = viewerRequest.builtProductPath, !builtProductPath.isEmpty {
                             labeledValue("Built product", value: builtProductPath)
                         }
 
-                        if let observedApplication = model.observedApplication {
+                        if let observedApplication = model.viewerSession.observedApplication {
                             labeledValue("Observed phase", value: observedApplication.phase.rawValue)
                             if let localizedName = observedApplication.localizedName, !localizedName.isEmpty {
                                 labeledValue("Observed app", value: localizedName)
@@ -56,7 +72,7 @@ struct ContentView: View {
                     }
                     .frame(maxWidth: .infinity, alignment: .leading)
                 } else {
-                    Text("No incoming debug-run request has been received yet. Once a scheme pre-action writes a fresh request, the app will persist it here and watch for launch and terminate events for that bundle identifier.")
+                    Text("No incoming debug-run request has been received yet. Once a scheme pre-action writes a fresh request, the app will persist it here, open a viewer session, and watch for launch and terminate events for that bundle identifier.")
                         .foregroundStyle(.secondary)
                         .frame(maxWidth: .infinity, alignment: .leading)
                 }

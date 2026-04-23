@@ -94,6 +94,140 @@ struct BriteLogTests {
     }
 
     @Test
+    func `app model starts with an idle viewer session when there is no run request`() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            shouldStartSystemIntegration: false,
+        )
+
+        #expect(model.currentRunRequest == nil)
+        #expect(model.viewerSession.state == .idle)
+        #expect(model.viewerSession.request == nil)
+        #expect(model.viewerSession.observedApplication == nil)
+    }
+
+    @Test
+    func `app model opens a waiting viewer session when a run request arrives before launch`() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let request = BriteLogRunRequest(
+            projectPath: "/tmp/ExampleApp/ExampleApp.xcodeproj",
+            schemeName: "ExampleApp",
+            targetName: "ExampleApp",
+            bundleIdentifier: "com.example.ExampleApp",
+            buildConfiguration: "Debug",
+            builtProductPath: "/tmp/DerivedData/Debug/ExampleApp.app",
+            source: .schemePreAction,
+        )
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            shouldStartSystemIntegration: false,
+        )
+
+        model.applyRunRequest(request)
+
+        #expect(model.currentRunRequest == request)
+        #expect(model.viewerSession.state == .waitingForLaunch)
+        #expect(model.viewerSession.request == request)
+        #expect(model.viewerSession.observedApplication?.phase == .waitingForLaunch)
+    }
+
+    @Test
+    func `app model attaches and ends the viewer session for matching workspace events`() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let request = BriteLogRunRequest(
+            projectPath: "/tmp/ExampleApp/ExampleApp.xcodeproj",
+            schemeName: "ExampleApp",
+            targetName: "ExampleApp",
+            bundleIdentifier: "com.example.ExampleApp",
+            buildConfiguration: "Debug",
+            builtProductPath: "/tmp/DerivedData/Debug/ExampleApp.app",
+            source: .schemePreAction,
+        )
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            shouldStartSystemIntegration: false,
+        )
+
+        model.applyRunRequest(request)
+        model.applyWorkspaceApplicationEvent(
+            bundleIdentifier: "com.example.ExampleApp",
+            localizedName: "Example App",
+            processIdentifier: 4242,
+            phase: .running,
+        )
+
+        #expect(model.viewerSession.state == .attached)
+        #expect(model.viewerSession.observedApplication?.processIdentifier == 4242)
+        #expect(model.viewerSession.endedAt == nil)
+
+        model.applyWorkspaceApplicationEvent(
+            bundleIdentifier: "com.example.ExampleApp",
+            localizedName: "Example App",
+            processIdentifier: 4242,
+            phase: .terminated,
+        )
+
+        #expect(model.viewerSession.state == .ended)
+        #expect(model.viewerSession.observedApplication?.phase == .terminated)
+        #expect(model.viewerSession.endedAt != nil)
+    }
+
+    @Test
+    func `viewer session buffers records for the active run request`() {
+        let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
+        let storage = BriteLogAppStorage(applicationSupportDirectory: root)
+        let request = BriteLogRunRequest(
+            projectPath: "/tmp/ExampleApp/ExampleApp.xcodeproj",
+            schemeName: "ExampleApp",
+            targetName: "ExampleApp",
+            bundleIdentifier: "com.example.ExampleApp",
+            buildConfiguration: "Debug",
+            builtProductPath: "/tmp/DerivedData/Debug/ExampleApp.app",
+            source: .schemePreAction,
+        )
+        let model = BriteLogAppModel(
+            storage: storage,
+            runningApplicationsProvider: { [] },
+            shouldStartSystemIntegration: false,
+        )
+        let records = [
+            BriteLogRecord(
+                date: .now,
+                level: .info,
+                subsystem: "com.example.ExampleApp",
+                category: "launch",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "ExampleApp",
+                message: "Application booted",
+            ),
+            BriteLogRecord(
+                date: .now.addingTimeInterval(1),
+                level: .warning,
+                subsystem: "com.example.ExampleApp",
+                category: "startup",
+                process: "ExampleApp",
+                processIdentifier: 4242,
+                sender: "ExampleApp",
+                message: "Slow startup path engaged",
+            ),
+        ]
+
+        model.applyRunRequest(request)
+        model.appendViewerRecords(records)
+
+        #expect(model.viewerSession.records == records)
+        #expect(model.viewerSession.request == request)
+    }
+
+    @Test
     func `scheme pre action installer reports not installed before mutation`() throws {
         let root = FileManager.default.temporaryDirectory.appendingPathComponent(UUID().uuidString, isDirectory: true)
         let projectURL = root.appendingPathComponent("ExampleApp.xcodeproj", isDirectory: true)

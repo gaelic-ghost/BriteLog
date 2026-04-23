@@ -99,6 +99,7 @@ Planned
 ### Tickets
 
 - [ ] Build a viewer model that owns the current watch session, live records, filters, and presentation state.
+- [x] Build the first app-owned viewer-session foundation for current run request, observed app state, session status, and buffered records.
 - [ ] Add a first log viewer window in the app for targeted live output.
 - [ ] Surface saved theme selection and a small set of viewer preferences from app storage.
 - [ ] Add at least one persistent highlighting or filtering primitive that survives app relaunch.
@@ -125,3 +126,4 @@ Planned
 - Marked the app-owned Application Support model and project-install records as complete within Milestone 0.
 - Switched Milestone 1 to a scheme-pre-action-first Xcode integration path, with a Run Script build phase fallback planned and build-plugin work deferred to a later helper decision.
 - Hardened the shared-scheme installer with backup, stale-write, and assisted Xcode close/apply/reopen safety behavior, and completed the first install/update/remove project-integration UI.
+- Added the first app-owned viewer-session model so the app now tracks idle, waiting, attached, and ended run state with a buffered record surface ahead of the full viewer UI.
