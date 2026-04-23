@@ -62,7 +62,7 @@ In Progress
 
 ### Status
 
-Planned
+In Progress
 
 ### Scope
 
@@ -72,9 +72,9 @@ Planned
 ### Tickets
 
 - [x] Design the handoff contract from Xcode integration into `BriteLog.app` for project path, target, bundle identifier, configuration, and run intent.
-- [ ] Add the first app UI for inspecting an `.xcodeproj`, resolving a shared scheme, and installing the BriteLog pre-action with safe shared-scheme backups, stale-write detection, and an "Xcode must be closed" guard for mutations.
-- [ ] Persist the latest incoming run request and show its current observed app state in the host UI.
-- [ ] Add install/update/remove flows for project integrations instead of install-only coverage.
+- [x] Add the first app UI for inspecting an `.xcodeproj`, resolving a shared scheme, and installing the BriteLog pre-action with safe shared-scheme backups, stale-write detection, and an assisted Xcode close/apply/reopen mutation flow.
+- [x] Persist the latest incoming run request and show its current observed app state in the host UI.
+- [x] Add install/update/remove flows for project integrations instead of install-only coverage.
 - [ ] Add a Run Script build phase fallback for projects that cannot use the shared-scheme path cleanly.
 - [ ] Document what the scheme hook writes, what the app owns, and how the live watch session is started.
 - [ ] Revisit whether a SwiftPM/Xcode build plugin earns its keep as a metadata or installer helper after the scheme-first path is proven.
@@ -124,3 +124,4 @@ Planned
 - Added the first BriteLog roadmap with an app-first product shape and viewer-following milestones.
 - Marked the app-owned Application Support model and project-install records as complete within Milestone 0.
 - Switched Milestone 1 to a scheme-pre-action-first Xcode integration path, with a Run Script build phase fallback planned and build-plugin work deferred to a later helper decision.
+- Hardened the shared-scheme installer with backup, stale-write, and assisted Xcode close/apply/reopen safety behavior, and completed the first install/update/remove project-integration UI.

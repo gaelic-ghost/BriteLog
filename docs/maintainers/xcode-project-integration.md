@@ -126,21 +126,39 @@ BriteLog does not:
 - edit the project's `.pbxproj`
 - create or share schemes automatically
 - mutate private `xcuserdata` scheme state
-- mutate any project file while Xcode is still open
+- mutate any project file while Xcode is still open without first coordinating an explicit app-managed restart flow
 
 This is the current safety posture because `.pbxproj` mutation is a much riskier integration surface, and even `.xcscheme` edits are vulnerable to IDE races if Xcode is already holding the project open and reconciling its own project state.
 
-## Xcode-Open Guard
+## Xcode-Open Assisted Restart Flow
 
-The installer must treat an open Xcode process as a hard block for install, update, and remove operations.
+The installer still treats an open Xcode process as a hard safety boundary, but it no longer stops at "close Xcode manually."
 
 That means:
 
 - inspecting a project while Xcode is open is allowed
-- mutating the shared scheme while Xcode is open is not allowed
-- the app should present this as an inspect-only state and tell the operator to close Xcode first
+- mutating the shared scheme while Xcode is open is still not allowed directly
+- when the operator chooses install, repair, or remove while Xcode is open, the app should offer to:
+  - ask Xcode to quit
+  - wait until the running Xcode process is actually terminated
+  - perform the shared-scheme mutation
+  - reopen Xcode afterward
+- if Xcode is not running, the app can mutate immediately
 
-The goal is to avoid racing Xcode over the same shared scheme file on a real developer machine.
+The goal is still to avoid racing Xcode over the same shared scheme file on a real developer machine, but now the app can guide that safer path instead of only blocking.
+
+This restart flow relies on documented AppKit behavior:
+
+- `NSRunningApplication.terminate()` asks the app to quit, but does not mean the app is already gone
+- `NSRunningApplication.isTerminated` is the real "the process is done closing" check
+- `NSWorkspace.openApplication(at:configuration:completionHandler:)` is the relaunch path once the mutation is finished
+
+Relevant Apple docs:
+
+- <https://developer.apple.com/documentation/appkit/nsrunningapplication/terminate()>
+- <https://developer.apple.com/documentation/appkit/nsrunningapplication/isterminated>
+- <https://developer.apple.com/documentation/appkit/nsworkspace/openapplication(at:configuration:completionhandler:)>
+- <https://developer.apple.com/documentation/appkit/nsworkspace/urlforapplication(withbundleidentifier:)>
 
 ## Fingerprint And Stale-Write Guard
 

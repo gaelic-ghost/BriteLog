@@ -3,6 +3,29 @@ import SwiftUI
 import UniformTypeIdentifiers
 
 struct ProjectIntegrationInstallerSection: View {
+    private enum PendingSchemeAction {
+        case installOrUpdate
+        case remove
+
+        var confirmationTitle: String {
+            switch self {
+                case .installOrUpdate:
+                    "Close Xcode, Apply, And Reopen"
+                case .remove:
+                    "Close Xcode, Remove, And Reopen"
+            }
+        }
+
+        var progressMessage: String {
+            switch self {
+                case .installOrUpdate:
+                    "Closing Xcode, updating the shared scheme safely, and reopening Xcode..."
+                case .remove:
+                    "Closing Xcode, removing the shared scheme pre-action safely, and reopening Xcode..."
+            }
+        }
+    }
+
     @Environment(BriteLogAppModel.self) private var model
 
     @State private var projectPath = ""
@@ -12,17 +35,15 @@ struct ProjectIntegrationInstallerSection: View {
     @State private var schemeInspection: BriteLogSchemePreActionInspection?
     @State private var statusMessage: String?
     @State private var errorMessage: String?
+    @State private var pendingSchemeAction: PendingSchemeAction?
     @State private var isWorking = false
 
     private let projectInspector = BriteLogXcodeProjectInspector()
     private let schemeInstaller = BriteLogSchemePreActionInstaller()
+    private let xcodeLifecycleCoordinator = BriteLogXcodeLifecycleCoordinator()
 
     private var canInstallOrUpdate: Bool {
-        guard let schemeInspection else {
-            return false
-        }
-
-        return schemeInspection.canMutate
+        resolvedAppTarget != nil && schemeInspection != nil
     }
 
     private var canRemove: Bool {
@@ -30,7 +51,7 @@ struct ProjectIntegrationInstallerSection: View {
             return false
         }
 
-        return schemeInspection.canMutate && schemeInspection.state != .notInstalled
+        return resolvedAppTarget != nil && schemeInspection.state != .notInstalled
     }
 
     private var installButtonTitle: String {
@@ -151,6 +172,31 @@ struct ProjectIntegrationInstallerSection: View {
             }
             .frame(maxWidth: .infinity, alignment: .leading)
         }
+        .alert(
+            pendingSchemeAction?.confirmationTitle ?? "",
+            isPresented: Binding(
+                get: { pendingSchemeAction != nil },
+                set: { if !$0 { pendingSchemeAction = nil } },
+            ),
+            presenting: pendingSchemeAction,
+        ) { action in
+            Button(action.confirmationTitle) {
+                performPendingSchemeAction(action)
+            }
+            Button("Cancel", role: .cancel) {
+                pendingSchemeAction = nil
+            }
+        } message: { action in
+            Text("""
+            Xcode is open right now.
+
+            BriteLog can safely handle this for you by:
+            1. asking Xcode to quit
+            2. waiting for Xcode to fully terminate
+            3. updating only the shared `.xcscheme`
+            4. reopening Xcode afterward
+            """)
+        }
     }
 
     private func chooseProject() {
@@ -251,24 +297,79 @@ struct ProjectIntegrationInstallerSection: View {
     }
 
     private func installOrUpdateSelectedScheme() {
+        guard let schemeInspection else {
+            return
+        }
+
+        if schemeInspection.mutationReadiness == .blockedByRunningXcode {
+            pendingSchemeAction = .installOrUpdate
+            return
+        }
+
+        performInstallOrUpdate(reopenXcodeAfterward: false)
+    }
+
+    private func removeSelectedScheme() {
+        guard let schemeInspection else {
+            return
+        }
+
+        if schemeInspection.mutationReadiness == .blockedByRunningXcode {
+            pendingSchemeAction = .remove
+            return
+        }
+
+        performRemove(reopenXcodeAfterward: false)
+    }
+
+    private func performPendingSchemeAction(_ action: PendingSchemeAction) {
+        pendingSchemeAction = nil
+
+        switch action {
+            case .installOrUpdate:
+                performInstallOrUpdate(reopenXcodeAfterward: true)
+            case .remove:
+                performRemove(reopenXcodeAfterward: true)
+        }
+    }
+
+    private func performInstallOrUpdate(reopenXcodeAfterward: Bool) {
         guard let inspection, let resolvedAppTarget, let schemeInspection else {
             return
         }
 
         isWorking = true
-        statusMessage = nil
+        statusMessage = reopenXcodeAfterward ? PendingSchemeAction.installOrUpdate.progressMessage : nil
         errorMessage = nil
 
         Task {
             do {
-                let result = try await Task.detached {
-                    try schemeInstaller.install(
-                        projectURL: inspection.projectURL,
-                        appTarget: resolvedAppTarget,
-                        expectedFingerprint: schemeInspection.fingerprint,
-                    )
+                let xcodeURL: URL? = if reopenXcodeAfterward {
+                    try await xcodeLifecycleCoordinator.closeXcodeIfRunning()
+                } else {
+                    nil
                 }
-                .value
+
+                let result: BriteLogSchemePreActionMutationResult
+                do {
+                    result = try await Task.detached {
+                        try schemeInstaller.install(
+                            projectURL: inspection.projectURL,
+                            appTarget: resolvedAppTarget,
+                            expectedFingerprint: schemeInspection.fingerprint,
+                        )
+                    }
+                    .value
+                } catch {
+                    if reopenXcodeAfterward {
+                        try? await xcodeLifecycleCoordinator.reopenXcodeIfNeeded(at: xcodeURL)
+                    }
+                    throw error
+                }
+
+                if reopenXcodeAfterward {
+                    try await xcodeLifecycleCoordinator.reopenXcodeIfNeeded(at: xcodeURL)
+                }
 
                 model.addProjectInstall(
                     displayName: resolvedAppTarget.targetName ?? inspection.projectName,
@@ -289,6 +390,8 @@ struct ProjectIntegrationInstallerSection: View {
 
                 Backup copy:
                 \(result.backupURL.path)
+
+                \(reopenXcodeAfterward ? "Xcode was reopened after the scheme update." : "")
                 """
                 errorMessage = nil
                 isWorking = false
@@ -300,25 +403,43 @@ struct ProjectIntegrationInstallerSection: View {
         }
     }
 
-    private func removeSelectedScheme() {
+    private func performRemove(reopenXcodeAfterward: Bool) {
         guard let inspection, let resolvedAppTarget, let schemeInspection else {
             return
         }
 
         isWorking = true
-        statusMessage = nil
+        statusMessage = reopenXcodeAfterward ? PendingSchemeAction.remove.progressMessage : nil
         errorMessage = nil
 
         Task {
             do {
-                let result = try await Task.detached {
-                    try schemeInstaller.remove(
-                        projectURL: inspection.projectURL,
-                        appTarget: resolvedAppTarget,
-                        expectedFingerprint: schemeInspection.fingerprint,
-                    )
+                let xcodeURL: URL? = if reopenXcodeAfterward {
+                    try await xcodeLifecycleCoordinator.closeXcodeIfRunning()
+                } else {
+                    nil
                 }
-                .value
+
+                let result: BriteLogSchemePreActionMutationResult
+                do {
+                    result = try await Task.detached {
+                        try schemeInstaller.remove(
+                            projectURL: inspection.projectURL,
+                            appTarget: resolvedAppTarget,
+                            expectedFingerprint: schemeInspection.fingerprint,
+                        )
+                    }
+                    .value
+                } catch {
+                    if reopenXcodeAfterward {
+                        try? await xcodeLifecycleCoordinator.reopenXcodeIfNeeded(at: xcodeURL)
+                    }
+                    throw error
+                }
+
+                if reopenXcodeAfterward {
+                    try await xcodeLifecycleCoordinator.reopenXcodeIfNeeded(at: xcodeURL)
+                }
 
                 model.removeProjectInstall(
                     projectPath: inspection.projectURL.path,
@@ -333,6 +454,8 @@ struct ProjectIntegrationInstallerSection: View {
 
                 Backup copy:
                 \(result.backupURL.path)
+
+                \(reopenXcodeAfterward ? "Xcode was reopened after the scheme update." : "")
                 """
                 errorMessage = nil
                 isWorking = false

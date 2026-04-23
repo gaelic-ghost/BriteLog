@@ -149,8 +149,8 @@ struct BriteLogTests {
             expectedFingerprint: initialInspection.fingerprint,
         )
 
-        let installedXML = try String(contentsOf: result.schemeURL)
-        let backupXML = try String(contentsOf: result.backupURL)
+        let installedXML = try String(contentsOf: result.schemeURL, encoding: .utf8)
+        let backupXML = try String(contentsOf: result.backupURL, encoding: .utf8)
 
         #expect(result.kind == .installed)
         #expect(result.inspection.state == .installed)
@@ -188,7 +188,7 @@ struct BriteLogTests {
             expectedFingerprint: installResult.inspection.fingerprint,
         )
 
-        let finalXML = try String(contentsOf: schemeURL)
+        let finalXML = try String(contentsOf: schemeURL, encoding: .utf8)
 
         #expect(removeResult.kind == .removed)
         #expect(removeResult.inspection.state == .notInstalled)
@@ -254,6 +254,107 @@ struct BriteLogTests {
         #expect(inspection.canMutate == false)
         #expect(inspection.mutationReadiness == .blockedByRunningXcode)
         #expect(inspection.warnings.isEmpty == false)
+    }
+
+    @Test
+    func `xcode lifecycle coordinator closes and relaunches xcode`() async throws {
+        let xcodeURL = URL(fileURLWithPath: "/Applications/Xcode.app", isDirectory: true)
+        let state = TestApplicationState()
+        let coordinator = BriteLogXcodeLifecycleCoordinator(
+            runningApplications: {
+                [
+                    .init(
+                        bundleIdentifier: BriteLogXcodeLifecycleCoordinator.xcodeBundleIdentifier,
+                        bundleURL: xcodeURL,
+                        isTerminated: { state.isTerminated },
+                        terminate: {
+                            state.markTerminated()
+                            return true
+                        },
+                    ),
+                ]
+            },
+            resolveApplicationURL: { _ in xcodeURL },
+            launchApplication: { reopenedURL in
+                state.recordReopenedURL(reopenedURL)
+            },
+            sleep: { _ in },
+        )
+
+        let relaunchURL = try await coordinator.closeXcodeIfRunning()
+        try await coordinator.reopenXcodeIfNeeded(at: relaunchURL)
+
+        #expect(state.didTerminate)
+        #expect(relaunchURL == xcodeURL)
+        #expect(state.reopenedURL == xcodeURL)
+    }
+
+    @Test
+    func `xcode lifecycle coordinator times out if xcode does not exit`() async {
+        let xcodeURL = URL(fileURLWithPath: "/Applications/Xcode.app", isDirectory: true)
+        let state = TestApplicationState()
+        let coordinator = BriteLogXcodeLifecycleCoordinator(
+            runningApplications: {
+                [
+                    .init(
+                        bundleIdentifier: BriteLogXcodeLifecycleCoordinator.xcodeBundleIdentifier,
+                        bundleURL: xcodeURL,
+                        isTerminated: { state.isTerminated },
+                        terminate: {
+                            state.recordTerminateRequest()
+                            return true
+                        },
+                    ),
+                ]
+            },
+            resolveApplicationURL: { _ in xcodeURL },
+            launchApplication: { _ in },
+            sleep: { _ in },
+            terminationTimeout: .zero,
+            pollInterval: .zero,
+        )
+
+        await #expect(throws: Error.self) {
+            try await coordinator.closeXcodeIfRunning()
+        }
+    }
+}
+
+private final class TestApplicationState: @unchecked Sendable {
+    private let lock = NSLock()
+    private var _isTerminated = false
+    private var _didTerminate = false
+    private var _reopenedURL: URL?
+
+    var isTerminated: Bool {
+        lock.withLock { _isTerminated }
+    }
+
+    var didTerminate: Bool {
+        lock.withLock { _didTerminate }
+    }
+
+    var reopenedURL: URL? {
+        lock.withLock { _reopenedURL }
+    }
+
+    func markTerminated() {
+        lock.withLock {
+            _isTerminated = true
+            _didTerminate = true
+        }
+    }
+
+    func recordTerminateRequest() {
+        lock.withLock {
+            _didTerminate = true
+        }
+    }
+
+    func recordReopenedURL(_ url: URL) {
+        lock.withLock {
+            _reopenedURL = url
+        }
     }
 }
 
