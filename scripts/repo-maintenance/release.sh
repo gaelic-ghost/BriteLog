@@ -12,6 +12,7 @@ mode="${REPO_MAINTENANCE_DEFAULT_RELEASE_MODE:-standard}"
 release_tag=""
 skip_validate="false"
 skip_gh_release="false"
+skip_distribution_assets="false"
 dry_run="false"
 
 while [ "$#" -gt 0 ]; do
@@ -32,6 +33,10 @@ while [ "$#" -gt 0 ]; do
       skip_gh_release="true"
       shift
       ;;
+    --skip-distribution-assets)
+      skip_distribution_assets="true"
+      shift
+      ;;
     --dry-run)
       dry_run="true"
       shift
@@ -39,7 +44,7 @@ while [ "$#" -gt 0 ]; do
     -h|--help)
       cat <<'USAGE'
 Usage:
-  release.sh --mode <standard|submodule> --version <vX.Y.Z> [--skip-validate] [--skip-gh-release] [--dry-run]
+  release.sh --mode <standard|submodule> --version <vX.Y.Z> [--skip-validate] [--skip-gh-release] [--skip-distribution-assets] [--dry-run]
 USAGE
       exit 0
       ;;
@@ -54,6 +59,7 @@ done
 export REPO_MAINTENANCE_RELEASE_MODE="$mode"
 export RELEASE_TAG="$release_tag"
 export REPO_MAINTENANCE_SKIP_GH_RELEASE="$skip_gh_release"
+export REPO_MAINTENANCE_SKIP_DISTRIBUTION_ASSETS="$skip_distribution_assets"
 export REPO_MAINTENANCE_DRY_RUN="$dry_run"
 
 if [ "$skip_validate" != "true" ]; then
