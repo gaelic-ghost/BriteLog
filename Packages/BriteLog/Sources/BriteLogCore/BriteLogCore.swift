@@ -185,13 +185,47 @@ public struct BriteLogLiveRequest: Equatable, Sendable {
     }
 }
 
-public enum BriteLogTheme: String, CaseIterable, Sendable {
+public enum BriteLogTheme: String, CaseIterable, Codable, Equatable, Sendable {
     case xcode
     case neon
     case aurora
     case ember
     case ice
     case plain
+
+    public var displayName: String {
+        switch self {
+            case .xcode:
+                "Xcode"
+            case .neon:
+                "Neon"
+            case .aurora:
+                "Aurora"
+            case .ember:
+                "Ember"
+            case .ice:
+                "Ice"
+            case .plain:
+                "Plain"
+        }
+    }
+
+    public var summary: String {
+        switch self {
+            case .xcode:
+                "Balanced IDE-style colors for everyday debugging."
+            case .neon:
+                "Higher-contrast terminal colors with a brighter cyber look."
+            case .aurora:
+                "Cool teal and pink highlights with a softer night-sky palette."
+            case .ember:
+                "Warm amber and ember tones for a hotter, warning-forward terminal look."
+            case .ice:
+                "Frosty cyan and pale-blue accents with crisp cool contrast."
+            case .plain:
+                "No ANSI colors, just readable structured text."
+        }
+    }
 }
 
 public enum BriteLogMetadataMode: String, CaseIterable, Sendable {

@@ -35,7 +35,7 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 open Apps/BriteLog/BriteLog.xcodeproj
 ```
 
-Right now, that app is the entitlement-bearing shell for packaging, settings, and future viewer work. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
+Right now, that app is the entitlement-bearing shell for packaging, settings, persisted app state, and future viewer work. The live viewer experience is still being built out, so the app is not yet a polished end-user log-viewing product.
 
 ## Usage
 
@@ -45,12 +45,13 @@ The current practical state is:
 
 - `BriteLog.app` is the entitlement-bearing surface we build, sign, package, and distribute
 - the package modules under `Packages/BriteLog` still hold most of the logging engine and command logic
+- the app now owns persisted configuration and project integration records in Application Support
 - the app UI is currently a host shell for settings and future viewer work, not the finished day-to-day viewer experience yet
 
 So the real supported workflow today is:
 
 1. Build and run the native app target from Xcode or `xcodebuild`
-2. Use that app host as the base for entitlement, provisioning, packaging, and future persisted settings
+2. Use that app host as the base for entitlement, provisioning, packaging, and persisted app-owned state
 3. Treat the package executable as internal development scaffolding, not as the product
 
 ## Development
@@ -77,8 +78,8 @@ xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configura
 
 The normal repo flow is:
 
-1. Work on the shared logging engine and app-support code in `Packages/BriteLog`.
-2. Keep app-only signing, entitlement, and future viewer behavior in `Apps/BriteLog`.
+1. Work on the shared logging engine in `Packages/BriteLog` and keep cross-surface theme/rendering primitives there.
+2. Keep app-owned signing, entitlement, persistence, settings, and future viewer behavior in `Apps/BriteLog`.
 3. Validate SwiftPM changes from the package directory.
 4. Validate workspace-level maintainer checks from the repo root.
 
@@ -105,20 +106,28 @@ Workspace-level validation:
 
 ```bash
 scripts/repo-maintenance/validate-all.sh
-xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configuration Debug build
+xcodebuild -project Apps/BriteLog/BriteLog.xcodeproj -scheme BriteLog -configuration Debug test
 ```
 
 Executable-level smoke checks:
 
 ```bash
-cd Packages/BriteLog
-swift test
 scripts/integration/smoke-xcode-app.sh
 ```
 
 The native-app smoke script accepts two honest outcomes:
 - the signed app launches successfully
 - macOS blocks launch with an `Unsatisfied Entitlements: com.apple.logging.local-store` policy failure, which confirms the current restricted-entitlement gate
+
+## Current App State
+
+The native app now persists its own host-level state under the user's Application Support directory for the app bundle identifier. At the moment that state includes:
+
+- the selected default color theme
+- whether the viewer should open when BriteLog is triggered from future project integration
+- a stored list of project integration records for future build-plugin or scheme-installed hooks
+
+That gives the app a real storage home before the viewer lands, instead of leaving app-owned state trapped in package-only CLI scaffolding.
 
 ## Repo Structure
 
