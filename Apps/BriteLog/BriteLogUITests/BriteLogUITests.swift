@@ -1,7 +1,7 @@
 import XCTest
 
 final class BriteLogUITests: XCTestCase {
-    override func setUpWithError() {
+    override func setUpWithError() throws {
         continueAfterFailure = false
     }
 
