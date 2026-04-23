@@ -47,11 +47,11 @@ if [ "$build_first" = "true" ]; then
 fi
 
 version="${release_tag#v}"
-pkg_path="$BRITELOG_OUTPUT_DIR/${BRITELOG_COMMAND_NAME}-${version}-macos-installer.pkg"
-zip_path="$BRITELOG_OUTPUT_DIR/${BRITELOG_COMMAND_NAME}-${version}-macos-user.zip"
+pkg_path="$BRITELOG_OUTPUT_DIR/${BRITELOG_ARTIFACT_BASENAME}-${version}-macos-installer.pkg"
+zip_path="$BRITELOG_OUTPUT_DIR/${BRITELOG_ARTIFACT_BASENAME}-${version}-macos-app.zip"
 
 [ -f "$pkg_path" ] || die "Expected installer package at $pkg_path before upload."
-[ -f "$zip_path" ] || die "Expected per-user zip bundle at $zip_path before upload."
+[ -f "$zip_path" ] || die "Expected app zip bundle at $zip_path before upload."
 
 gh release view "$release_tag" >/dev/null 2>&1 || die "GitHub release $release_tag does not exist yet. Create it before uploading assets."
 gh release upload "$release_tag" "$pkg_path" "$zip_path" --clobber

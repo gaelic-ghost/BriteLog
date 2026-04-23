@@ -6,7 +6,6 @@
 //
 
 import SwiftUI
-import BriteLogCLI
 
 @available(macOS 10.15, *)
 @main
@@ -15,14 +14,8 @@ struct BriteLogApp: App {
         WindowGroup {
             ContentView()
         }
-		Settings {
-			SettingsWindow()
-		}
+        Settings {
+            SettingsWindow()
+        }
     }
-}
-
-enum BriteLogToolExecutable {
-	static func main() {
-		runBriteLogCLI()
-	}
 }

@@ -4,7 +4,7 @@
 
 - This repository is a workspace root, not a single package root.
 - Keep Swift packages under `Packages/`.
-- Keep native app wrappers and other Xcode-managed app work under `Apps/`.
+- Keep native apps and other Xcode-managed app work under `Apps/`.
 - Package-specific guidance belongs beside each package, such as `Packages/BriteLog/AGENTS.md`.
 - Keep repository-level maintainer tooling at the root in `scripts/repo-maintenance/`.
 
@@ -23,7 +23,7 @@
 
 ## Working In Apps
 
-- Reserve `Apps/` for future Xcode-managed wrappers or native app surfaces that sit above the shared package code.
+- Reserve `Apps/` for Xcode-managed native app surfaces that sit above the shared package code.
 - Keep app-specific signing, entitlement, and permission behavior in `Apps/` rather than widening the package layout around app-only needs.
 
 ## Apple / Xcode Project Workflow

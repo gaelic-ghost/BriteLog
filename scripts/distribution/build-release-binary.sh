@@ -4,5 +4,5 @@ set -eu
 SELF_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 . "$SELF_DIR/lib/common.sh"
 
-binary=$(build_release_binary)
-log "Built release binary: $binary"
+product=$(build_release_product)
+log "Built release app bundle: $product"

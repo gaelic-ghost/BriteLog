@@ -4,11 +4,12 @@ set -eu
 DIST_COMMON_DIR=$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)
 DIST_ROOT=$(CDPATH= cd -- "$DIST_COMMON_DIR/../.." && pwd)
 
-BRITELOG_PROJECT_PATH="${BRITELOG_PROJECT_PATH:-$DIST_ROOT/Apps/BriteLogTool/BriteLogTool.xcodeproj}"
-BRITELOG_SCHEME="${BRITELOG_SCHEME:-BriteLogTool}"
+BRITELOG_PROJECT_PATH="${BRITELOG_PROJECT_PATH:-$DIST_ROOT/Apps/BriteLog/BriteLog.xcodeproj}"
+BRITELOG_SCHEME="${BRITELOG_SCHEME:-BriteLog}"
 BRITELOG_CONFIGURATION="${BRITELOG_CONFIGURATION:-Release}"
-BRITELOG_PRODUCT_NAME="${BRITELOG_PRODUCT_NAME:-BriteLogTool}"
-BRITELOG_COMMAND_NAME="${BRITELOG_COMMAND_NAME:-britelog}"
+BRITELOG_PRODUCT_NAME="${BRITELOG_PRODUCT_NAME:-BriteLog.app}"
+BRITELOG_EXECUTABLE_NAME="${BRITELOG_EXECUTABLE_NAME:-BriteLog}"
+BRITELOG_ARTIFACT_BASENAME="${BRITELOG_ARTIFACT_BASENAME:-britelog}"
 BRITELOG_DISTRIBUTION_ID="${BRITELOG_DISTRIBUTION_ID:-com.gaelic-ghost.britelog}"
 BRITELOG_DERIVED_DATA_PATH="${BRITELOG_DERIVED_DATA_PATH:-$DIST_ROOT/dist/DerivedData}"
 BRITELOG_OUTPUT_DIR="${BRITELOG_OUTPUT_DIR:-$DIST_ROOT/dist}"
@@ -78,11 +79,15 @@ resolve_release_tag() {
   die "Could not determine the GitHub release tag automatically. Pass --release-tag <vX.Y.Z> or set BRITELOG_RELEASE_TAG."
 }
 
-release_binary_path() {
+release_product_path() {
   printf '%s\n' "$BRITELOG_DERIVED_DATA_PATH/Build/Products/$BRITELOG_CONFIGURATION/$BRITELOG_PRODUCT_NAME"
 }
 
-build_release_binary() {
+release_executable_path() {
+  printf '%s\n' "$(release_product_path)/Contents/MacOS/$BRITELOG_EXECUTABLE_NAME"
+}
+
+build_release_product() {
   log "Building $BRITELOG_SCHEME ($BRITELOG_CONFIGURATION) from $BRITELOG_PROJECT_PATH"
   xcodebuild \
     -project "$BRITELOG_PROJECT_PATH" \
@@ -91,17 +96,18 @@ build_release_binary() {
     -derivedDataPath "$BRITELOG_DERIVED_DATA_PATH" \
     build >&2
 
-  binary=$(release_binary_path)
-  [ -x "$binary" ] || die "Expected built executable at $binary, but it was not found."
-  printf '%s\n' "$binary"
+  product=$(release_product_path)
+  [ -d "$product" ] || die "Expected built app bundle at $product, but it was not found."
+  executable=$(release_executable_path)
+  [ -x "$executable" ] || die "Expected built app executable at $executable, but it was not found."
+  printf '%s\n' "$product"
 }
 
-copy_release_binary_as_command() {
-  source_binary="$1"
-  target_binary="$2"
-  ensure_parent_dir "$target_binary"
-  cp "$source_binary" "$target_binary"
-  chmod 0755 "$target_binary"
+copy_release_product_bundle() {
+  source_bundle="$1"
+  target_bundle="$2"
+  ensure_parent_dir "$target_bundle"
+  cp -R "$source_bundle" "$target_bundle"
 }
 
 maybe_sign_pkg() {

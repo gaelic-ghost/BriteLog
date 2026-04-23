@@ -136,7 +136,7 @@ private func expectSnapshot(
         Notes:
           - `current-process` is the narrow safe path and only sees logs emitted by the running BriteLog process.
           - `local-store` is the broader macOS path for cross-process reading, but Apple documents that it requires system permission and the `com.apple.logging.local-store` entitlement.
-          - If `local-store` is unavailable here, a simple signed wrapper app may still not be enough on its own; the real distribution story depends on whether this build can carry the needed entitlement.
+          - If `local-store` is unavailable here, a signed app host may still need the right provisioning profile before macOS will let it launch with that entitlement.
         """,
     )
 }

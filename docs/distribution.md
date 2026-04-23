@@ -1,9 +1,11 @@
 # Distribution
 
-BriteLog now has two planned direct-distribution artifact shapes:
+BriteLog now packages the signed native app host, not the old standalone CLI wrapper.
 
-- a system-wide macOS installer package for `/usr/local/...`
-- a per-user zip bundle with a small installer script for `~/.local/...`
+The current direct-distribution artifact shapes are:
+
+- a system-wide macOS installer package for `BriteLog.app`
+- a notarizable zip bundle containing `BriteLog.app`
 
 The packaging scripts live under [`scripts/distribution/`](../scripts/distribution).
 
@@ -29,9 +31,8 @@ scripts/distribution/upload-github-release-artifacts.sh --release-tag v0.1.0 --b
 
 The system-wide installer is intended to be the default download for most users.
 
-- The packaged binary is staged at `/usr/local/libexec/gaelic-ghost/britelog/<version>/britelog`
-- The installer creates or updates `/usr/local/bin/britelog` as the public command path
-- The final artifact is a `.pkg`
+- the package installs `BriteLog.app` into `/Applications`
+- the final artifact is a `.pkg`
 
 Build it with:
 
@@ -39,13 +40,13 @@ Build it with:
 scripts/distribution/package-system-pkg.sh
 ```
 
-### Per-User Zip Bundle
+### App Zip Bundle
 
-The per-user bundle is intended for people who do not want a system-wide install.
+The zip bundle is intended for manual or drag-and-drop installation.
 
-- The zip contains the `britelog` payload plus `install.sh`
-- `install.sh` defaults to `~/.local/lib/gaelic-ghost/britelog/<version>/britelog`
-- `install.sh` creates or updates `~/.local/bin/britelog`
+- the zip contains `BriteLog.app`
+- users can unpack it and move the app into `/Applications`
+- the final artifact is a `.zip`
 
 Build it with:
 
@@ -60,13 +61,13 @@ The packaging scripts support notarization-oriented follow-through, but only whe
 Optional environment variables:
 
 - `BRITELOG_INSTALLER_CERT`
-  - A `Developer ID Installer` identity name used to sign the `.pkg`
+  - a `Developer ID Installer` identity name used to sign the `.pkg`
 - `BRITELOG_NOTARY_PROFILE`
-  - A keychain profile name configured for `xcrun notarytool`
+  - a keychain profile name configured for `xcrun notarytool`
 - `BRITELOG_ALLOW_UNSIGNED_RELEASE_ASSETS`
-  - Defaults to `false`
-  - When left at the default, GitHub release uploads require both signing inputs
-  - Set it to `true` only for deliberate smoke testing of unsigned release assets
+  - defaults to `false`
+  - when left at the default, GitHub release uploads require both signing inputs
+  - set it to `true` only for deliberate smoke testing of unsigned release assets
 
 If those values are not set:
 
@@ -74,26 +75,32 @@ If those values are not set:
 - notarization is skipped
 - the `.zip` is still built, but notarization is skipped
 
-The Xcode build itself is still expected to produce a properly signed Release binary.
+The Xcode build itself is still expected to produce a properly signed Release app bundle.
 
 ## Release Build Surface
 
-The packaging scripts build the Xcode-managed wrapper target:
+The packaging scripts build the Xcode-managed app target:
 
-- project: `Apps/BriteLogTool/BriteLogTool.xcodeproj`
-- scheme: `BriteLogTool`
+- project: `Apps/BriteLog/BriteLog.xcodeproj`
+- scheme: `BriteLog`
 - configuration: `Release`
 
 The scripts use a derived data root under `dist/DerivedData/` so packaging output stays isolated from everyday development builds.
 
+## Restricted Entitlement Note
+
+Apple documents that `OSLogStore.local()` requires `com.apple.logging.local-store`, and local verification in this repo shows that macOS treats that as a restricted entitlement that needs a matching provisioning profile before launch is allowed.
+
+So these packaging scripts now describe the right product shape, but successful launch of the built app still depends on the provisioning story being satisfied for that entitlement-bearing app build.
+
 ## GitHub Release Hosting
 
-The intended release-hosting shape is now implemented:
+The intended release-hosting shape is now:
 
-- upload the final `.pkg` to a GitHub release as the default system-wide installer
-- upload the final `.zip` to the same GitHub release as the per-user install option
+- upload the final `.pkg` to a GitHub release as the default installer
+- upload the final `.zip` to the same GitHub release as the manual-install option
 
-The repo-maintenance release workflow now builds and uploads those artifacts automatically after the GitHub release object exists:
+The repo-maintenance release workflow builds and uploads those artifacts automatically after the GitHub release object exists:
 
 ```bash
 BRITELOG_INSTALLER_CERT="Developer ID Installer: Your Name (TEAMID)" \
@@ -106,7 +113,7 @@ That release flow will:
 - create or reuse the `v0.1.0` tag locally
 - push the branch and tag
 - create the GitHub release object
-- build the Release wrapper binary
+- build the Release app bundle
 - package the `.pkg` and `.zip`
 - notarize them when the notary profile is configured
 - upload both artifacts to the GitHub release
